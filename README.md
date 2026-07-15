@@ -34,6 +34,18 @@
 ## 项目文档
 
 - [项目统筹计划](outputs/3D户型项目统筹计划.md)
+- [编辑器底座技术决策](docs/adr/0001-editor-foundation.md)
+
+## 仓库结构
+
+```text
+apps/                 Web 应用
+packages/             可复用领域包
+services/             在线 API 服务
+workers/              异步任务 Worker
+spikes/               可丢弃的技术验证
+outputs/              立项与交付文档
+```
 
 ## 下一步
 

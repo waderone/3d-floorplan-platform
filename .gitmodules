@@ -1,0 +1,4 @@
+[submodule "spikes/pascal-editor/upstream"]
+	path = spikes/pascal-editor/upstream
+	url = https://github.com/pascalorg/editor.git
+	shallow = true
