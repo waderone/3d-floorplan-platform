@@ -1,0 +1,52 @@
+# Codex internal planning files
+task_plan.md
+findings.md
+progress.md
+.planning/
+work/
+scratch/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# JavaScript / TypeScript
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Blender and generated 3D files
+*.blend1
+*.blend2
+*.blend@
+*.glb
+*.gltf
+*.bin
+
+# Local object storage and databases
+.minio/
+data/
+uploads/
+renders/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
