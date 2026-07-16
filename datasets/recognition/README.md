@@ -64,6 +64,28 @@ python -m app.recognition_candidates \
 下载使用 1024 像素标准缩略图、有限 429/503 重试和可恢复文件；单项失败会写入队列后返回失败，
 再次运行只补缺失文件。人工需要继续排除立面、剖面、多页拼图、比例不明和非现代住宅样本。
 
+## 生成标注工作包
+
+`candidate-reviews.example.json` 展示语义筛选和权利审核的独立记录。内容类型、目标域、选择原因、
+已知宽度和尺度证据属于 curation；商业使用与再分发结论属于 rights。AI 辅助的图面筛选不能替代
+项目负责人或权利人员签署 rights，未签署时必须保持 `status: pending`。
+
+```bash
+cd services/api
+python -m app.recognition_annotation_workpack \
+  --queue ../../datasets/recognition/private/commons-candidates/queue.json \
+  --reviews ../../datasets/recognition/candidate-reviews.example.json \
+  --candidate-id commons-190205778 \
+  --image-dir ../../datasets/recognition/private/commons-candidates/images \
+  --output ../../datasets/recognition/private/annotation-workpacks/commons-190205778/workpack.json \
+  --overlay ../../datasets/recognition/private/annotation-workpacks/commons-190205778/overlay.png
+```
+
+工具会重新核验图片 SHA-256、字节数和可解码尺寸，并运行当前识别基线。预测放在
+`suggestions` 且固定 `isGroundTruth: false`；人工真值位于独立的 `groundTruth`，初始为空。
+只要权利或真值未完成，`promotionEligible` 固定为 false 并列出阻断原因。被语义筛选拒绝或
+权利拒绝的候选不能生成工作包。
+
 ## 运行评测
 
 ```bash

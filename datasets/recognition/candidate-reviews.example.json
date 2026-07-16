@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "reviews": [
+    {
+      "candidateId": "commons-190205778",
+      "curation": {
+        "contentType": "floor-plan",
+        "targetDomain": "modern-residential",
+        "selectionStatus": "selected",
+        "selectionReasons": [
+          "clear-single-floor-plan",
+          "known-external-width"
+        ],
+        "planWidthMeters": 10.668,
+        "scaleEvidence": "The outer drawing width is explicitly labelled as 35 ft.",
+        "reviewedBy": "codex-visual-review",
+        "reviewedAt": "2026-07-16"
+      },
+      "rights": {
+        "status": "pending",
+        "commercialUseConfirmed": false,
+        "redistributionAllowedConfirmed": false
+      }
+    }
+  ]
+}

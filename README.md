@@ -50,6 +50,8 @@
 - [户型图自动识别与人工复核契约](docs/adr/0008-floorplan-recognition-gate.md)
 - [识别建议人工复核与场景写入](docs/adr/0009-recognition-review-ui.md)
 - [可商用户型识别评测集与确定性指标](docs/adr/0010-recognition-evaluation-dataset.md)
+- [真实户型候选收集与人工审核边界](docs/adr/0011-recognition-candidate-intake.md)
+- [候选审核与标注工作包](docs/adr/0012-recognition-annotation-workpack.md)
 
 ## 仓库结构
 
