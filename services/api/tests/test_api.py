@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import shutil
+import struct
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,9 +16,40 @@ PNG = b"\x89PNG\r\n\x1a\nminimal-png"
 JPG = b"\xff\xd8\xffminimal-jpg"
 
 
+def valid_glb() -> bytes:
+    json_chunk = b'{"asset":{"version":"2.0"}}'
+    json_chunk += b" " * (-len(json_chunk) % 4)
+    total_length = 12 + 8 + len(json_chunk)
+    return (
+        struct.pack("<4sII", b"glTF", 2, total_length)
+        + struct.pack("<I4s", len(json_chunk), b"JSON")
+        + json_chunk
+    )
+
+
+class CopyOptimizer:
+    def optimize(self, source: Path, output: Path) -> dict[str, Any]:
+        shutil.copyfile(source, output)
+        content = source.read_bytes()
+        metrics = {
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "bytes": len(content),
+            "nodes": 1,
+            "meshes": 1,
+            "materials": 1,
+            "primitives": 1,
+        }
+        return {"source": metrics, "optimized": metrics}
+
+
+class FailingOptimizer:
+    def optimize(self, source: Path, output: Path) -> dict[str, Any]:
+        raise RuntimeError("synthetic optimizer failure")
+
+
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
-    with TestClient(create_app(tmp_path)) as test_client:
+    with TestClient(create_app(tmp_path, optimizer=CopyOptimizer())) as test_client:
         yield test_client
 
 
@@ -286,3 +321,120 @@ def test_paths_cannot_escape_data_directory(client: TestClient, tmp_path: Path) 
     )
     assert invalid_project.status_code == 422
     assert not (tmp_path.parent / "scene.json").exists()
+
+
+def test_glb_artifact_requires_a_saved_scene(client: TestClient) -> None:
+    response = client.post(
+        "/api/projects/missing/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("model.glb", valid_glb(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "scene_not_found"
+
+
+def test_glb_artifact_rejects_stale_scene_revision(client: TestClient) -> None:
+    assert client.put("/api/projects/model/scene", json=scene_payload()).status_code == 201
+
+    response = client.post(
+        "/api/projects/model/artifacts/glb",
+        data={"sceneRevision": "2"},
+        files={"file": ("model.glb", valid_glb(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "scene_revision_mismatch",
+        "currentRevision": 1,
+    }
+
+
+@pytest.mark.parametrize(
+    ("media_type", "content", "expected_status"),
+    [
+        ("application/octet-stream", valid_glb(), 415),
+        ("model/gltf-binary", b"not-a-glb", 422),
+        ("model/gltf-binary", valid_glb()[:-1], 422),
+    ],
+)
+def test_glb_artifact_rejects_invalid_uploads(
+    client: TestClient,
+    media_type: str,
+    content: bytes,
+    expected_status: int,
+) -> None:
+    assert client.put("/api/projects/invalid-glb/scene", json=scene_payload()).status_code == 201
+
+    response = client.post(
+        "/api/projects/invalid-glb/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("model.glb", content, media_type)},
+    )
+
+    assert response.status_code == expected_status
+
+
+def test_glb_artifact_rejects_files_over_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert client.put("/api/projects/large-glb/scene", json=scene_payload()).status_code == 201
+    monkeypatch.setattr("app.main.MAX_GLB_UPLOAD_BYTES", 32)
+
+    response = client.post(
+        "/api/projects/large-glb/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("model.glb", valid_glb(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 413
+
+
+def test_glb_artifact_is_optimized_and_served(client: TestClient) -> None:
+    assert client.put("/api/projects/model/scene", json=scene_payload()).status_code == 201
+    content = valid_glb()
+
+    accepted = client.post(
+        "/api/projects/model/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("model.glb", content, "model/gltf-binary")},
+    )
+
+    assert accepted.status_code == 202
+    assert accepted.json()["status"] == "processing"
+    manifest = client.get("/api/projects/model/artifacts/latest")
+    assert manifest.status_code == 200
+    payload = manifest.json()
+    assert payload["status"] == "ready"
+    assert payload["sceneRevision"] == 1
+    assert payload["pipelineVersion"] == "gltf-transform-4.4.1-pascal-v3"
+    assert payload["source"]["bytes"] == len(content)
+    assert payload["source"]["statistics"]["nodes"] == 1
+    assert payload["optimized"]["statistics"]["meshes"] == 1
+    assert payload["mobileBudgetExceeded"] is False
+    assert client.get(payload["optimized"]["url"]).content == content
+
+    duplicate = client.post(
+        "/api/projects/model/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("renamed.glb", content, "model/gltf-binary")},
+    )
+    assert duplicate.status_code == 202
+    assert duplicate.json()["artifactId"] == payload["artifactId"]
+    assert duplicate.json()["status"] == "ready"
+
+
+def test_glb_optimizer_failure_is_persisted(tmp_path: Path) -> None:
+    with TestClient(create_app(tmp_path, optimizer=FailingOptimizer())) as client:
+        assert client.put("/api/projects/failure/scene", json=scene_payload()).status_code == 201
+        accepted = client.post(
+            "/api/projects/failure/artifacts/glb",
+            data={"sceneRevision": "1"},
+            files={"file": ("model.glb", valid_glb(), "model/gltf-binary")},
+        )
+        manifest = client.get("/api/projects/failure/artifacts/latest")
+
+    assert accepted.status_code == 202
+    assert manifest.status_code == 200
+    assert manifest.json()["status"] == "failed"
+    assert manifest.json()["error"] == "synthetic optimizer failure"

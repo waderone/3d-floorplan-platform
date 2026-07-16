@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0",
+  "revision": 1,
+  "units": "m",
+  "scene": {
+    "nodes": {
+      "site_glb_baseline": {
+        "object": "node",
+        "id": "site_glb_baseline",
+        "type": "site",
+        "name": "Site",
+        "parentId": null,
+        "visible": true,
+        "metadata": {},
+        "polygon": {
+          "type": "polygon",
+          "points": [[-15, -15], [15, -15], [15, 15], [-15, 15]]
+        },
+        "children": ["building_glb_baseline"]
+      },
+      "building_glb_baseline": {
+        "object": "node",
+        "id": "building_glb_baseline",
+        "type": "building",
+        "name": "Building",
+        "parentId": "site_glb_baseline",
+        "visible": true,
+        "metadata": {},
+        "children": ["level_glb_baseline"],
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0]
+      },
+      "level_glb_baseline": {
+        "object": "node",
+        "id": "level_glb_baseline",
+        "type": "level",
+        "name": "Ground Floor",
+        "parentId": "building_glb_baseline",
+        "visible": true,
+        "metadata": {},
+        "children": ["wall_glb_baseline"],
+        "level": 0
+      },
+      "wall_glb_baseline": {
+        "object": "node",
+        "id": "wall_glb_baseline",
+        "type": "wall",
+        "name": "Wall 1",
+        "parentId": "level_glb_baseline",
+        "visible": true,
+        "metadata": {},
+        "children": [],
+        "start": [-6, 3],
+        "end": [-1, -2],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      }
+    },
+    "rootNodeIds": ["site_glb_baseline"],
+    "collections": {},
+    "materials": {}
+  },
+  "assets": []
+}

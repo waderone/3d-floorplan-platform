@@ -1,0 +1,18 @@
+{
+  "name": "@floorplan/model-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "process": "node process-glb.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/cli": "4.4.1",
+    "@gltf-transform/core": "4.4.1",
+    "@gltf-transform/extensions": "4.4.1",
+    "meshoptimizer": "1.0.1"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

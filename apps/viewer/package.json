@@ -1,0 +1,22 @@
+{
+  "name": "@floorplan/viewer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@babylonjs/core": "9.16.2",
+    "@babylonjs/loaders": "9.16.2",
+    "meshoptimizer": "1.0.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.1.4"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

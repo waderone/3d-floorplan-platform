@@ -8,10 +8,28 @@ from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any, Literal
 
-from fastapi import FastAPI, File, HTTPException, Path as ApiPath, Response, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Path as ApiPath,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .artifacts import (
+    MAX_GLB_UPLOAD_BYTES,
+    ArtifactManifest,
+    ArtifactStore,
+    GlbOptimizer,
+    NodeGlbOptimizer,
+    validate_glb,
+)
 
 
 PROJECT_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
@@ -143,14 +161,19 @@ def _detect_image(content: bytes, declared_type: str | None) -> tuple[str, str]:
     return detected
 
 
-def create_app(data_dir: Path | None = None) -> FastAPI:
+def create_app(
+    data_dir: Path | None = None,
+    optimizer: GlbOptimizer | None = None,
+) -> FastAPI:
     root = (data_dir or Path(os.getenv("FLOORPLAN_DATA_DIR", "data"))).expanduser().resolve()
     assets_dir = root / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
     asset_lock = Lock()
     store = SceneStore(root / "scenes")
+    artifact_store = ArtifactStore(root / "artifacts")
+    artifact_optimizer = optimizer or NodeGlbOptimizer()
 
-    app = FastAPI(title="3D Floorplan API", version="0.1.0")
+    app = FastAPI(title="3D Floorplan API", version="0.2.0")
     app.state.data_dir = root
     app.add_middleware(
         CORSMiddleware,
@@ -159,6 +182,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    app.mount(
+        "/artifacts",
+        StaticFiles(directory=artifact_store.directory),
+        name="artifacts",
+    )
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -225,6 +253,69 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         if is_create:
             response.status_code = 201
         return saved
+
+    @app.post(
+        "/api/projects/{project_id}/artifacts/glb",
+        response_model=ArtifactManifest,
+        status_code=202,
+    )
+    async def upload_glb_artifact(
+        project_id: ProjectId,
+        background_tasks: BackgroundTasks,
+        file: Annotated[UploadFile, File()],
+        scene_revision: Annotated[int, Form(alias="sceneRevision", ge=1)],
+    ) -> ArtifactManifest:
+        scene = store.load(project_id)
+        if scene is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "scene_not_found", "projectId": project_id},
+            )
+        if scene.revision != scene_revision:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "scene_revision_mismatch",
+                    "currentRevision": scene.revision,
+                },
+            )
+        try:
+            content = await file.read(MAX_GLB_UPLOAD_BYTES + 1)
+        finally:
+            await file.close()
+        if len(content) > MAX_GLB_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="GLB exceeds the 80 MiB upload limit")
+        if file.content_type != "model/gltf-binary":
+            raise HTTPException(
+                status_code=415,
+                detail="Content-Type must be model/gltf-binary",
+            )
+        try:
+            validate_glb(content)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+        manifest, should_process = artifact_store.begin(project_id, scene_revision, content)
+        if should_process:
+            background_tasks.add_task(
+                artifact_store.process,
+                manifest.artifact_id,
+                artifact_optimizer,
+            )
+        return manifest
+
+    @app.get(
+        "/api/projects/{project_id}/artifacts/latest",
+        response_model=ArtifactManifest,
+    )
+    def get_latest_artifact(project_id: ProjectId) -> ArtifactManifest:
+        manifest = artifact_store.load_latest(project_id)
+        if manifest is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "artifact_not_found", "projectId": project_id},
+            )
+        return manifest
 
     return app
 

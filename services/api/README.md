@@ -6,17 +6,27 @@
 - 按项目保存、读取场景 JSON；
 - 基于 `expectedRevision` 的乐观并发控制；
 - 场景图节点引用和资产元数据的最小边界校验；
+- GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
 - 健康检查。
 
 数据默认保存在当前目录的 `data/` 中，也可通过
 `FLOORPLAN_DATA_DIR` 指定其他目录。数据库、鉴权、任务队列不在本 PoC 范围。
 本地 JSON 的并发控制仅保证单个 API 进程内有效；本阶段不要启用多个 Uvicorn worker。
+GLB 优化使用同进程 `BackgroundTasks` 调用独立 Node worker，仅用于技术闸门；生产环境
+必须替换为任务队列，但保留相同 manifest 状态契约。
 为便于本地编辑器和移动设备联调，PoC 暂时允许任意 CORS origin，且不使用
 cookie 或认证信息；生产部署前必须改为明确的前端域名白名单。
 
 ## 本地运行
 
-需要 Python 3.11 或更高版本。
+需要 Python 3.11 或更高版本。模型 worker 需要 Node 22.12 或更高版本，并先安装：
+
+```bash
+cd workers/model
+npm install
+```
+
+随后启动 API：
 
 ```bash
 cd services/api
@@ -25,6 +35,8 @@ source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
+
+Node 不在 PATH 时用 `FLOORPLAN_NODE_BIN=/absolute/path/to/node` 指定运行时。
 
 健康检查：`GET http://127.0.0.1:8000/health`。API 交互文档：
 `http://127.0.0.1:8000/docs`。
@@ -90,6 +102,17 @@ API 会校验节点必须是对象、字典键与 `node.id` 一致、节点包�
 当前图片只做 Content-Type 与文件头校验，场景 JSON 也尚未设置独立请求体上限；
 生产化前需增加完整图片解码、像素上限、场景配额和流式落盘。
 
+### 发布 GLB
+
+- `POST /api/projects/{project_id}/artifacts/glb`
+- `GET /api/projects/{project_id}/artifacts/latest`
+
+POST 使用 multipart，字段为 `file`（`model/gltf-binary`）和 `sceneRevision`。源文件
+硬上限 80 MiB，必须是长度一致的 GLB 2.0，且 revision 必须等于当前已保存场景。
+接口返回 HTTP 202 与 `processing` manifest；后台完成后 latest 变为 `ready` 或
+`failed`。ready manifest 记录 `pipelineVersion`、源/优化 SHA-256、字节数、节点、
+网格、材质、primitive 和 15 MiB 手机预算标记。优化文件通过 `/artifacts/...` 访问。
+
 ## 测试
 
 ```bash
@@ -98,5 +121,5 @@ source .venv/bin/activate
 python -m pytest
 ```
 
-GPU 识别、模型导出和 Blender 渲染将来必须通过任务队列执行，
-不在 HTTP 请求进程中运行。
+浏览器 GLB 导出和 Blender 渲染将来必须通过正式任务编排执行。当前 BackgroundTasks
+只验证可替换边界，不具备进程恢复、分布式锁或重试保证。
