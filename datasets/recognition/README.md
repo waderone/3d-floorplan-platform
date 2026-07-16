@@ -45,6 +45,25 @@ Open Access 图片可以作为权利样本，但历史建筑图不能替代现�
 报告输出墙体、房间和门窗的 precision/recall/F1，以及墙端点平均误差、房间平均 IoU 和
 房间语义准确率。首版主要产品目标仍是人工修正中位时间，而不是只追求单一像素指标。
 
+## 收集候选
+
+下面的离线工具只从 Wikimedia Commons 官方 API 收集提供方标记为 `CC0` 或
+`Public domain` 的 JPG/PNG，并生成缩略图联系表。输出始终保持 `rightsReviewStatus: pending`、
+`commercialUseConfirmed: false`；提供方元数据不能替代逐文件人工审核。
+
+```bash
+cd services/api
+python -m app.recognition_candidates \
+  --limit 20 \
+  --delay-seconds 2 \
+  --output ../../datasets/recognition/private/commons-candidates/queue.json \
+  --download-dir ../../datasets/recognition/private/commons-candidates/images \
+  --contact-sheet ../../datasets/recognition/private/commons-candidates/contact-sheet.jpg
+```
+
+下载使用 1024 像素标准缩略图、有限 429/503 重试和可恢复文件；单项失败会写入队列后返回失败，
+再次运行只补缺失文件。人工需要继续排除立面、剖面、多页拼图、比例不明和非现代住宅样本。
+
 ## 运行评测
 
 ```bash
