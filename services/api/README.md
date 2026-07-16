@@ -10,6 +10,7 @@
 - 版本化装修风格目录和 Blender 异步效果图状态；
 - EEVEE 预览/Cycles 高清渲染档位与鸟瞰、客厅、卧室多视角清单；
 - 户型图墙体/房间候选、置信度、复核原因和可视化叠加图；
+- 可审计户型评测集、墙/房间/门窗指标和人工修正时间报告；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -180,6 +181,20 @@ POST JSON 示例：
 `walls[]`、`rooms[]`、`openings[]`、整体/单项置信度、预处理指标、`reviewReasons[]`
 和 `/recognitions/.../overlay.png`。当前门窗和房型语义显式标为未支持；建议不直接写回
 Pascal scene，必须经编辑器人工接受或修正。
+
+### 户型识别离线评测
+
+评测集格式、权利审核和标注规范见 `datasets/recognition/README.md`。在 API 目录运行：
+
+```bash
+python -m app.recognition_evaluation ../../datasets/recognition/manifest.json \
+  --output ../../datasets/recognition/reports/opencv-baseline.json
+```
+
+工具会先校验样本商业评测权利、仓库再分发边界、相对路径和图片 SHA-256，再调用当前 OpenCV
+后端。报告按墙体、房间和门窗分别计算 precision/recall/F1，并记录墙端点误差、房间 IoU、
+房间语义准确率和同一 pipeline 的人工修正中位时间。`pending` 标注会明确跳过；图片损坏进入
+`invalid`，识别异常进入 `recognition_failed` 并以零预测计入召回率，不会从分母中静默消失。
 
 ## 测试
 

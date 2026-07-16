@@ -9,7 +9,8 @@
 异步效果图”、“房间多边形→规则布局→三套风格同源渲染”、“可审计真实家具→
 客餐卧整屋布置→多端同源加载”、“EEVEE 预览→Cycles/Metal 1080p
 鸟瞰+客厅+卧室多视角”、“户型图→墙/房间候选→置信度叠加图”，以及“逐项
-接受/拒绝→确定性 Wall/Zone 写入→revision 保存”
+接受/拒绝→确定性 Wall/Zone 写入→revision 保存”、“可审计样本→墙/房间/门窗指标→
+人工修正中位时间”
 技术闸门均已跑通。下一批工作是：
 
 1. 建立合法的真实户型评测/训练集，升级斜墙、门窗、文字干扰和房间语义模型。
@@ -48,6 +49,7 @@
 - [Cycles 高清多视角效果图](docs/adr/0007-photoreal-render-profiles.md)
 - [户型图自动识别与人工复核契约](docs/adr/0008-floorplan-recognition-gate.md)
 - [识别建议人工复核与场景写入](docs/adr/0009-recognition-review-ui.md)
+- [可商用户型识别评测集与确定性指标](docs/adr/0010-recognition-evaluation-dataset.md)
 
 ## 仓库结构
 

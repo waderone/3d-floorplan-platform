@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3d-floorplan.local/schemas/recognition-evaluation-dataset-1.0.json",
+  "title": "3D Floorplan Recognition Evaluation Dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "datasetId", "datasetVersion", "samples"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "datasetId": {"$ref": "#/$defs/id"},
+    "datasetVersion": {"type": "integer", "minimum": 1},
+    "samples": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sample"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [{"type": "number"}, {"type": "number"}]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceType",
+        "title",
+        "author",
+        "sourceUrl",
+        "licenseId",
+        "licenseUrl",
+        "rightsEvidenceUrl",
+        "commercialUseConfirmed",
+        "redistributionAllowed",
+        "storageMode",
+        "reviewedBy",
+        "reviewedAt"
+      ],
+      "properties": {
+        "sourceType": {"enum": ["project-owned", "commissioned", "public-domain", "open-license"]},
+        "title": {"type": "string", "minLength": 1, "maxLength": 300},
+        "author": {"type": "string", "minLength": 1, "maxLength": 200},
+        "sourceUrl": {"type": "string", "pattern": "^https://"},
+        "licenseId": {"type": "string", "minLength": 1, "maxLength": 100},
+        "licenseUrl": {"type": "string", "pattern": "^https://"},
+        "rightsEvidenceUrl": {"type": "string", "pattern": "^https://"},
+        "commercialUseConfirmed": {"const": true},
+        "redistributionAllowed": {"type": "boolean"},
+        "storageMode": {"enum": ["repository", "local-only"]},
+        "reviewedBy": {"type": "string", "minLength": 1, "maxLength": 100},
+        "reviewedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"storageMode": {"const": "repository"}}},
+          "then": {"properties": {"redistributionAllowed": {"const": true}}}
+        }
+      ]
+    },
+    "wall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "start", "end", "thickness"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 100},
+        "start": {"$ref": "#/$defs/point"},
+        "end": {"$ref": "#/$defs/point"},
+        "thickness": {"type": "number", "exclusiveMinimum": 0, "maximum": 2}
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "roomType", "polygon"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 100},
+        "roomType": {"type": "string", "minLength": 1, "maxLength": 50},
+        "polygon": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/point"}}
+      }
+    },
+    "opening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "center", "width"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 100},
+        "kind": {"enum": ["door", "window"]},
+        "center": {"$ref": "#/$defs/point"},
+        "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 20}
+      }
+    },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinateSystem", "walls", "rooms", "openings"],
+      "properties": {
+        "coordinateSystem": {"const": "plan-bottom-left-x-right-z-up-m"},
+        "walls": {"type": "array", "items": {"$ref": "#/$defs/wall"}},
+        "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
+        "openings": {"type": "array", "items": {"$ref": "#/$defs/opening"}}
+      }
+    },
+    "correctionSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pipelineVersion", "durationSeconds", "reviewer", "completedAt"],
+      "properties": {
+        "pipelineVersion": {"type": "string", "minLength": 1, "maxLength": 100},
+        "durationSeconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 7200},
+        "reviewer": {"type": "string", "minLength": 1, "maxLength": 100},
+        "completedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampleId",
+        "imagePath",
+        "imageSha256",
+        "planWidthMeters",
+        "split",
+        "annotationStatus",
+        "source",
+        "annotations"
+      ],
+      "properties": {
+        "sampleId": {"$ref": "#/$defs/id"},
+        "imagePath": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:jpe?g|png)$"},
+        "imageSha256": {"$ref": "#/$defs/sha256"},
+        "planWidthMeters": {"type": "number", "exclusiveMinimum": 0, "maximum": 500},
+        "split": {"enum": ["calibration", "validation", "test"]},
+        "annotationStatus": {"enum": ["pending", "complete"]},
+        "source": {"$ref": "#/$defs/source"},
+        "annotations": {"$ref": "#/$defs/annotations"},
+        "correctionSessions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/correctionSession"}
+        }
+      }
+    }
+  }
+}

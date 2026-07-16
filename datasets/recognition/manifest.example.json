@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "datasetId": "commercial-floorplan-evaluation",
+  "datasetVersion": 1,
+  "samples": [
+    {
+      "sampleId": "smithsonian-1964-12-1",
+      "imagePath": "images/smithsonian-1964-12-1.jpg",
+      "imageSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "planWidthMeters": 10,
+      "split": "calibration",
+      "annotationStatus": "pending",
+      "source": {
+        "sourceType": "public-domain",
+        "title": "Floor Plan of a Building",
+        "author": "John Trumbull",
+        "sourceUrl": "https://www.si.edu/object/floor-plan-building:chndm_1964-12-1",
+        "licenseId": "CC0-1.0",
+        "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "rightsEvidenceUrl": "https://www.si.edu/object/floor-plan-building:chndm_1964-12-1",
+        "commercialUseConfirmed": true,
+        "redistributionAllowed": true,
+        "storageMode": "repository",
+        "reviewedBy": "replace-with-reviewer",
+        "reviewedAt": "2026-07-16"
+      },
+      "annotations": {
+        "coordinateSystem": "plan-bottom-left-x-right-z-up-m",
+        "walls": [],
+        "rooms": [],
+        "openings": []
+      },
+      "correctionSessions": []
+    }
+  ]
+}
