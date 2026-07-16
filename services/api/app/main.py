@@ -40,6 +40,12 @@ from .renders import (
     RenderStore,
 )
 from .render_profiles import PROFILE_ID_PATTERN, RenderProfileCatalog, RenderProfileManifest
+from .recognitions import (
+    OpenCvRecognitionBackend,
+    RecognitionBackend,
+    RecognitionManifest,
+    RecognitionStore,
+)
 from .styles import STYLE_ID_RE, StyleCatalog, StylePack, StyleSummary
 
 
@@ -110,6 +116,14 @@ class RenderCreateRequest(BaseModel):
     scene_revision: int = Field(alias="sceneRevision", ge=1)
     style_id: str = Field(alias="styleId", pattern=STYLE_ID_RE.pattern)
     profile_id: str = Field(alias="profileId", default="preview", pattern=PROFILE_ID_PATTERN)
+
+
+class RecognitionCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    scene_revision: int = Field(alias="sceneRevision", ge=1)
+    asset_id: str = Field(alias="assetId", pattern=r"^[0-9a-f]{64}$")
+    plan_width_meters: float = Field(alias="planWidthMeters", gt=0, le=500)
 
 
 class SceneStore:
@@ -188,6 +202,7 @@ def create_app(
     style_directory: Path | None = None,
     asset_catalog_path: Path | None = None,
     render_profile_catalog_path: Path | None = None,
+    recognition_backend: RecognitionBackend | None = None,
 ) -> FastAPI:
     root = (data_dir or Path(os.getenv("FLOORPLAN_DATA_DIR", "data"))).expanduser().resolve()
     assets_dir = root / "assets"
@@ -201,12 +216,15 @@ def create_app(
     render_profile_catalog = RenderProfileCatalog(render_profile_catalog_path)
     render_store = RenderStore(root / "renders")
     render_backend = renderer or BlenderRenderer()
+    recognition_store = RecognitionStore(root / "recognitions")
+    floorplan_recognizer = recognition_backend or OpenCvRecognitionBackend()
 
-    app = FastAPI(title="3D Floorplan API", version="0.6.0")
+    app = FastAPI(title="3D Floorplan API", version="0.7.0")
     app.state.data_dir = root
     app.state.style_catalog = style_catalog
     app.state.asset_catalog = asset_catalog
     app.state.render_profile_catalog = render_profile_catalog
+    app.state.recognition_store = recognition_store
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -220,6 +238,11 @@ def create_app(
         name="artifacts",
     )
     app.mount("/renders", StaticFiles(directory=render_store.directory), name="renders")
+    app.mount(
+        "/recognitions",
+        StaticFiles(directory=recognition_store.directory),
+        name="recognitions",
+    )
     app.mount(
         "/catalog-assets",
         StaticFiles(directory=asset_catalog.directory),
@@ -376,6 +399,70 @@ def create_app(
     @app.get("/api/render-profiles", response_model=RenderProfileManifest)
     def get_render_profiles() -> RenderProfileManifest:
         return render_profile_catalog.manifest
+
+    @app.post(
+        "/api/projects/{project_id}/recognitions",
+        response_model=RecognitionManifest,
+        status_code=202,
+    )
+    def create_recognition(
+        project_id: ProjectId,
+        request: RecognitionCreateRequest,
+        background_tasks: BackgroundTasks,
+    ) -> RecognitionManifest:
+        scene = store.load(project_id)
+        if scene is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "scene_not_found", "projectId": project_id},
+            )
+        if scene.revision != request.scene_revision:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "scene_revision_mismatch", "currentRevision": scene.revision},
+            )
+        asset = next(
+            (item for item in scene.assets if item.asset_id == request.asset_id),
+            None,
+        )
+        if asset is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "asset_not_in_scene", "assetId": request.asset_id},
+            )
+        image_path = assets_dir / asset.url.rsplit("/", maxsplit=1)[-1]
+        if not image_path.is_file():
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "asset_not_found", "assetId": request.asset_id},
+            )
+        manifest, should_process = recognition_store.begin(
+            project_id,
+            request.scene_revision,
+            request.asset_id,
+            request.plan_width_meters,
+        )
+        if should_process:
+            background_tasks.add_task(
+                recognition_store.process,
+                manifest.recognition_id,
+                floorplan_recognizer,
+                image_path,
+            )
+        return manifest
+
+    @app.get(
+        "/api/projects/{project_id}/recognitions/latest",
+        response_model=RecognitionManifest,
+    )
+    def get_latest_recognition(project_id: ProjectId) -> RecognitionManifest:
+        manifest = recognition_store.load_latest(project_id)
+        if manifest is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "recognition_not_found", "projectId": project_id},
+            )
+        return manifest
 
     @app.get(
         "/api/projects/{project_id}/layout",

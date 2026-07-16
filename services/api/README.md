@@ -9,6 +9,7 @@
 - GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
 - 版本化装修风格目录和 Blender 异步效果图状态；
 - EEVEE 预览/Cycles 高清渲染档位与鸟瞰、客厅、卧室多视角清单；
+- 户型图墙体/房间候选、置信度、复核原因和可视化叠加图；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -154,6 +155,31 @@ layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。�
 候选房间、已布置/未布置房间、带 `roomId`/`assetId` 的绝对坐标、目录版本以及唯一真实
 模型的移动端字节预算。真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender
 加载失败时按目录声明创建程序化回退并记录数量。
+
+### 户型图识别建议
+
+- `POST /api/projects/{project_id}/recognitions`
+- `GET /api/projects/{project_id}/recognitions/latest`
+
+POST JSON 示例：
+
+```json
+{
+  "sceneRevision": 1,
+  "assetId": "<uploaded-image-sha256>",
+  "planWidthMeters": 10
+}
+```
+
+`assetId` 必须是当前 scene revision 已引用的上传图片；`planWidthMeters` 是用户标定的户型
+外边界宽度。任务返回 HTTP 202 与 `processing`，完成后是 `review_required` 或 `failed`，
+不存在自动 `ready` 场景。
+
+当前 `opencv-axis-aligned-baseline-v1` 使用 Otsu 二值化和形态学提取水平/垂直墙，
+用闭合自由空间连通域产生房间候选。manifest 坐标为米制 `x-right-z-up`，包含
+`walls[]`、`rooms[]`、`openings[]`、整体/单项置信度、预处理指标、`reviewReasons[]`
+和 `/recognitions/.../overlay.png`。当前门窗和房型语义显式标为未支持；建议不直接写回
+Pascal scene，必须经编辑器人工接受或修正。
 
 ## 测试
 
