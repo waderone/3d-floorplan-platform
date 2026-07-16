@@ -7,6 +7,7 @@
 - 基于 `expectedRevision` 的乐观并发控制；
 - 场景图节点引用和资产元数据的最小边界校验；
 - GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
+- 版本化装修风格目录和 Blender 异步效果图状态；
 - 健康检查。
 
 数据默认保存在当前目录的 `data/` 中，也可通过
@@ -14,6 +15,8 @@
 本地 JSON 的并发控制仅保证单个 API 进程内有效；本阶段不要启用多个 Uvicorn worker。
 GLB 优化使用同进程 `BackgroundTasks` 调用独立 Node worker，仅用于技术闸门；生产环境
 必须替换为任务队列，但保留相同 manifest 状态契约。
+效果图同样以 BackgroundTasks 调用 Blender 5.x，使用 `FLOORPLAN_BLENDER_BIN` 指定
+可执行文件。开发机已用 Blender 5.2.0 LTS 验证；生产必须使用固定镜像和任务队列。
 为便于本地编辑器和移动设备联调，PoC 暂时允许任意 CORS origin，且不使用
 cookie 或认证信息；生产部署前必须改为明确的前端域名白名单。
 
@@ -37,6 +40,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 Node 不在 PATH 时用 `FLOORPLAN_NODE_BIN=/absolute/path/to/node` 指定运行时。
+Blender 不在 PATH 时用 `FLOORPLAN_BLENDER_BIN=/absolute/path/to/blender` 指定运行时。
 
 健康检查：`GET http://127.0.0.1:8000/health`。API 交互文档：
 `http://127.0.0.1:8000/docs`。
@@ -113,6 +117,29 @@ POST 使用 multipart，字段为 `file`（`model/gltf-binary`）和 `sceneRevis
 `failed`。ready manifest 记录 `pipelineVersion`、源/优化 SHA-256、字节数、节点、
 网格、材质、primitive 和 15 MiB 手机预算标记。优化文件通过 `/artifacts/...` 访问。
 
+### 风格与效果图
+
+- `GET /api/styles`
+- `GET /api/styles/{style_id}`
+- `POST /api/projects/{project_id}/renders`
+- `GET /api/projects/{project_id}/renders/latest?styleId=warm-minimal`
+
+POST JSON 示例：
+
+```json
+{
+  "sceneRevision": 1,
+  "styleId": "warm-minimal"
+}
+```
+
+场景 revision 必须与 ready 的最新 GLB 一致。接口返回 HTTP 202 和 processing manifest；
+后台完成后 latest 变为 ready 或 failed。ready 记录风格 id/version、PNG SHA-256、字节数、
+1280×720 尺寸、Blender 版本、引擎和耗时，图片通过 `/renders/.../image.png` 访问。
+
+当前 `warm-minimal@1` 只使用本项目原创程序化材质和家具；固定布局用于技术验证，不代表
+已经实现房间感知自动布置。
+
 ## 测试
 
 ```bash
@@ -121,5 +148,5 @@ source .venv/bin/activate
 python -m pytest
 ```
 
-浏览器 GLB 导出和 Blender 渲染将来必须通过正式任务编排执行。当前 BackgroundTasks
-只验证可替换边界，不具备进程恢复、分布式锁或重试保证。
+浏览器 GLB 导出、模型优化和 Blender 渲染将来必须通过正式任务编排执行。当前
+BackgroundTasks 只验证可替换边界，不具备进程恢复、分布式锁或重试保证。

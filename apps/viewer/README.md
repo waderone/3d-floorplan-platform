@@ -12,8 +12,9 @@ npm install
 npm run dev
 ```
 
-访问 `http://localhost:4173/?project=<projectId>`。开发服务器会代理 `/api` 和
+访问 `http://localhost:4173/?project=<projectId>&style=warm-minimal`。开发服务器会代理 `/api` 和
 `/artifacts`；独立部署时用 `VITE_API_BASE_URL` 指定 API origin。
 
 Viewer 支持 3D/俯视/复位、鼠标与触摸相机、全屏、加载进度、优化状态轮询、错误
-重试和手机安全区。生产构建运行 `npm run build`。
+重试和手机安全区。它会从 API 读取同一版本化风格包，在 GLB 上应用 PBR 建筑/地面材质、
+环境灯光、相机和程序化家具；未知或非法风格会显示明确错误。生产构建运行 `npm run build`。

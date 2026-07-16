@@ -6,10 +6,14 @@ import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression'
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Scene } from '@babylonjs/core/scene'
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import meshoptDecoderSource from '../node_modules/meshoptimizer/meshopt_decoder.cjs?raw'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
+import { parseStylePack, type StylePack } from './style-pack'
 import './style.css'
 
 const rootElement = document.querySelector<HTMLElement>('#app')
@@ -30,7 +34,7 @@ root.innerHTML = `
       <span class="eyebrow">LIVE MODEL</span>
       <h1 id="project-name">3D 户型</h1>
       <div class="model-meta">
-        <span id="revision">Revision —</span><span id="size">—</span>
+        <span id="revision">Revision —</span><span id="size">—</span><span id="style-name">Style —</span>
       </div>
       <div class="model-stats" id="stats"></div>
     </aside>
@@ -71,9 +75,11 @@ const projectName = element<HTMLElement>('#project-name')
 const revision = element<HTMLElement>('#revision')
 const size = element<HTMLElement>('#size')
 const stats = element<HTMLElement>('#stats')
+const styleName = element<HTMLElement>('#style-name')
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
+const styleId = new URLSearchParams(window.location.search).get('style') ?? 'warm-minimal'
 const engine = new Engine(canvas, true, { adaptToDeviceRatio: true, stencil: true })
 const meshoptDecoderUrl = URL.createObjectURL(
   new Blob([meshoptDecoderSource], { type: 'text/javascript' }),
@@ -107,9 +113,14 @@ sun.intensity = 1.8
 sun.diffuse = new Color3(1, 0.9, 0.72)
 
 let container: AssetContainer | null = null
+let styledMeshes: AbstractMesh[] = []
+let styledMaterials: PBRMaterial[] = []
 let defaultTarget = Vector3.Zero()
 let baseRadius = 12
 let defaultRadius = 12
+let perspectiveAlpha = -Math.PI / 4
+let perspectiveBeta = Math.PI / 3
+let radiusMultiplier = 1
 
 function apiUrl(path: string): string {
   return `${apiBase}${path}`
@@ -136,12 +147,13 @@ function setError(error: unknown): void {
   errorMessage.textContent = error instanceof Error ? error.message : '发生未知错误'
 }
 
-function setReady(manifest: ArtifactManifest): void {
+function setReady(manifest: ArtifactManifest, style: StylePack): void {
   shell.dataset.state = 'ready'
   statusPanel.hidden = true
   errorPanel.hidden = true
   projectName.textContent = manifest.projectId
   revision.textContent = `Revision ${manifest.sceneRevision}`
+  styleName.textContent = `${style.name} v${style.version}`
   if (!manifest.optimized) return
   size.textContent = formatBytes(manifest.optimized.bytes)
   const modelStats = manifest.optimized.statistics
@@ -167,7 +179,111 @@ function frameModel(): void {
 
 function radiusForViewport(): number {
   const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
-  return baseRadius * Math.max(1, 0.8 / aspect)
+  return baseRadius * radiusMultiplier * Math.max(1, 0.8 / aspect)
+}
+
+function color3(value: string): Color3 {
+  return Color3.FromHexString(value)
+}
+
+function clearStyle(): void {
+  for (const mesh of styledMeshes) mesh.dispose(false, false)
+  for (const material of styledMaterials) material.dispose()
+  styledMeshes = []
+  styledMaterials = []
+}
+
+function modelBounds(meshes: AbstractMesh[]): { minimum: Vector3; maximum: Vector3 } {
+  const visible = meshes.filter((mesh) => mesh.isVisible && mesh.getTotalVertices() > 0)
+  if (visible.length === 0) throw new Error('模型中没有可应用风格的几何体')
+  const bounds = scene.getWorldExtends((mesh) => visible.includes(mesh))
+  return { minimum: bounds.min, maximum: bounds.max }
+}
+
+function applyStyle(style: StylePack, model: AssetContainer): void {
+  clearStyle()
+  const materials = Object.fromEntries(
+    Object.entries(style.materials).map(([role, value]) => {
+      const material = new PBRMaterial(`style-${role}`, scene)
+      material.albedoColor = color3(value.baseColor)
+      material.metallic = value.metallic
+      material.roughness = value.roughness
+      styledMaterials.push(material)
+      return [role, material]
+    }),
+  )
+  const architecture = materials.architecture
+  if (!architecture) throw new Error('风格包缺少建筑材质')
+  for (const mesh of model.meshes) {
+    if (mesh.getTotalVertices() > 0) mesh.material = architecture
+  }
+
+  const bounds = modelBounds(model.meshes)
+  const extent = bounds.maximum.subtract(bounds.minimum)
+  const center = bounds.minimum.add(extent.scale(0.5))
+  const floorWidth = Math.max(6, extent.x + style.layout.floorPadding * 2)
+  const floorDepth = Math.max(6, extent.z + style.layout.floorPadding * 2)
+  const floorHeight = 0.12
+  const floor = MeshBuilder.CreateBox(
+    'style-floor',
+    { width: floorWidth, height: floorHeight, depth: floorDepth },
+    scene,
+  )
+  floor.position.set(center.x, bounds.minimum.y - floorHeight / 2, center.z)
+  floor.material = materials.floor ?? architecture
+  styledMeshes.push(floor)
+
+  for (const placement of style.layout.placements) {
+    const [width, height, depth] = placement.size
+    let mesh: AbstractMesh
+    if (placement.kind === 'box') {
+      mesh = MeshBuilder.CreateBox(
+        `style-${placement.id}`,
+        { width, height, depth },
+        scene,
+      )
+    } else if (placement.kind === 'cylinder') {
+      mesh = MeshBuilder.CreateCylinder(
+        `style-${placement.id}`,
+        { height, diameter: Math.max(width, depth), tessellation: 48 },
+        scene,
+      )
+    } else {
+      mesh = MeshBuilder.CreateSphere(
+        `style-${placement.id}`,
+        { segments: 32, diameter: 1 },
+        scene,
+      )
+      mesh.scaling.set(width, height, depth)
+    }
+    mesh.position.set(
+      center.x + placement.position[0],
+      bounds.minimum.y + placement.position[1],
+      center.z + placement.position[2],
+    )
+    mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
+    mesh.material = materials[placement.role] ?? architecture
+    styledMeshes.push(mesh)
+  }
+
+  scene.clearColor = Color4.FromColor3(color3(style.environment.backgroundColor), 1)
+  skyLight.diffuse = color3(style.environment.ambientColor)
+  skyLight.intensity = style.environment.ambientIntensity * 0.65
+  sun.diffuse = color3(style.environment.sunColor)
+  sun.intensity = style.environment.sunIntensity * 0.55
+  sun.direction = Vector3.FromArray(style.environment.sunDirection)
+  perspectiveAlpha = (style.camera.alphaDegrees * Math.PI) / 180
+  perspectiveBeta = (style.camera.betaDegrees * Math.PI) / 180
+  radiusMultiplier = style.camera.radiusMultiplier
+}
+
+async function getStylePack(): Promise<StylePack> {
+  const response = await fetch(apiUrl(`/api/styles/${encodeURIComponent(styleId)}`), {
+    cache: 'no-store',
+  })
+  if (response.status === 404) throw new Error('指定的装修风格不存在')
+  if (!response.ok) throw new Error(`风格服务请求失败（${response.status}）`)
+  return parseStylePack(await response.json())
 }
 
 async function getLatestManifest(): Promise<ArtifactManifest> {
@@ -195,8 +311,11 @@ async function loadModel(): Promise<void> {
     if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(projectId)) {
       throw new Error('链接缺少有效的 project 参数')
     }
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(styleId)) {
+      throw new Error('链接包含无效的 style 参数')
+    }
     setStatus('正在读取模型', '检查最新发布版本…', 4)
-    const manifest = await waitUntilReady()
+    const [manifest, style] = await Promise.all([waitUntilReady(), getStylePack()])
     if (!manifest.optimized) throw new Error('模型产物尚未准备完成')
     await Promise.all([
       import('@babylonjs/loaders/glTF/2.0/glTFLoader'),
@@ -204,6 +323,7 @@ async function loadModel(): Promise<void> {
       import('@babylonjs/loaders/glTF/2.0/Extensions/KHR_mesh_quantization'),
       import('@babylonjs/loaders/glTF/2.0/Extensions/KHR_texture_transform'),
     ])
+    clearStyle()
     container?.dispose()
     container = await LoadAssetContainerAsync(apiUrl(manifest.optimized.url), scene, {
       onProgress: (event) => {
@@ -212,8 +332,11 @@ async function loadModel(): Promise<void> {
       },
     })
     container.addAllToScene()
+    applyStyle(style, container)
     frameModel()
-    setReady(manifest)
+    camera.alpha = perspectiveAlpha
+    camera.beta = perspectiveBeta
+    setReady(manifest, style)
   } catch (error) {
     setError(error)
   }
@@ -232,8 +355,8 @@ for (const button of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
       camera.alpha = -Math.PI / 2
       camera.beta = 0.04
     } else {
-      camera.alpha = -Math.PI / 4
-      camera.beta = Math.PI / 3
+      camera.alpha = perspectiveAlpha
+      camera.beta = perspectiveBeta
     }
     camera.setTarget(defaultTarget)
     camera.radius = defaultRadius

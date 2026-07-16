@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 import struct
 from pathlib import Path
@@ -47,9 +48,40 @@ class FailingOptimizer:
         raise RuntimeError("synthetic optimizer failure")
 
 
+class CopyRenderer:
+    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+        style = json.loads(style_path.read_text(encoding="utf-8"))
+        output = style["output"]
+        png_header = (
+            b"\x89PNG\r\n\x1a\n"
+            + struct.pack(">I", 13)
+            + b"IHDR"
+            + struct.pack(">IIBBBBB", output["width"], output["height"], 8, 2, 0, 0, 0)
+        )
+        output_png.write_bytes(png_header)
+        return {
+            "engine": "BLENDER_EEVEE",
+            "blenderVersion": "5.2.0 LTS test",
+            "renderSeconds": 0.01,
+        }
+
+
+class FailingRenderer:
+    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+        raise RuntimeError("synthetic render failure")
+
+
+class IncompleteRenderer(CopyRenderer):
+    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+        super().render(source_glb, style_path, output_png)
+        return {}
+
+
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
-    with TestClient(create_app(tmp_path, optimizer=CopyOptimizer())) as test_client:
+    with TestClient(
+        create_app(tmp_path, optimizer=CopyOptimizer(), renderer=CopyRenderer())
+    ) as test_client:
         yield test_client
 
 
@@ -425,7 +457,9 @@ def test_glb_artifact_is_optimized_and_served(client: TestClient) -> None:
 
 
 def test_glb_optimizer_failure_is_persisted(tmp_path: Path) -> None:
-    with TestClient(create_app(tmp_path, optimizer=FailingOptimizer())) as client:
+    with TestClient(
+        create_app(tmp_path, optimizer=FailingOptimizer(), renderer=CopyRenderer())
+    ) as client:
         assert client.put("/api/projects/failure/scene", json=scene_payload()).status_code == 201
         accepted = client.post(
             "/api/projects/failure/artifacts/glb",
@@ -438,3 +472,120 @@ def test_glb_optimizer_failure_is_persisted(tmp_path: Path) -> None:
     assert manifest.status_code == 200
     assert manifest.json()["status"] == "failed"
     assert manifest.json()["error"] == "synthetic optimizer failure"
+
+
+def test_style_catalog_is_listed_and_served(client: TestClient) -> None:
+    styles = client.get("/api/styles")
+    style = client.get("/api/styles/warm-minimal")
+
+    assert styles.status_code == 200
+    assert styles.json() == [
+        {
+            "id": "warm-minimal",
+            "version": 1,
+            "name": "暖木极简",
+            "description": "暖白墙面、浅木地板、低饱和布艺和柔和日光组成的首套程序化验证风格。",
+        }
+    ]
+    assert style.status_code == 200
+    assert style.json()["schemaVersion"] == "1.0"
+    assert style.json()["materials"]["architecture"]["baseColor"] == "#F3EADF"
+    assert style.json()["assets"][0]["source"] == "project-authored"
+    assert client.get("/api/styles/missing-style").status_code == 404
+
+
+def publish_model(client: TestClient, project_id: str = "render-model") -> dict[str, Any]:
+    assert client.put(f"/api/projects/{project_id}/scene", json=scene_payload()).status_code == 201
+    uploaded = client.post(
+        f"/api/projects/{project_id}/artifacts/glb",
+        data={"sceneRevision": "1"},
+        files={"file": ("model.glb", valid_glb(), "model/gltf-binary")},
+    )
+    assert uploaded.status_code == 202
+    artifact = client.get(f"/api/projects/{project_id}/artifacts/latest")
+    assert artifact.json()["status"] == "ready"
+    return artifact.json()
+
+
+def test_render_requires_ready_artifact_and_known_style(client: TestClient) -> None:
+    assert client.put("/api/projects/no-model/scene", json=scene_payload()).status_code == 201
+    missing_artifact = client.post(
+        "/api/projects/no-model/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal"},
+    )
+    assert missing_artifact.status_code == 409
+    assert missing_artifact.json()["detail"]["code"] == "artifact_not_ready"
+
+    publish_model(client, "unknown-style")
+    unknown_style = client.post(
+        "/api/projects/unknown-style/renders",
+        json={"sceneRevision": 1, "styleId": "missing-style"},
+    )
+    assert unknown_style.status_code == 404
+    assert unknown_style.json()["detail"]["code"] == "style_not_found"
+
+
+def test_render_is_deterministic_processed_and_served(client: TestClient) -> None:
+    artifact = publish_model(client)
+    accepted = client.post(
+        "/api/projects/render-model/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal"},
+    )
+    assert accepted.status_code == 202
+    assert accepted.json()["status"] == "processing"
+
+    latest = client.get(
+        "/api/projects/render-model/renders/latest",
+        params={"styleId": "warm-minimal"},
+    )
+    assert latest.status_code == 200
+    payload = latest.json()
+    assert payload["status"] == "ready"
+    assert payload["artifactId"] == artifact["artifactId"]
+    assert payload["pipelineVersion"] == "blender-5x-style-v1"
+    assert payload["style"] == {"id": "warm-minimal", "version": 1}
+    assert payload["output"]["width"] == 1280
+    assert payload["output"]["height"] == 720
+    assert payload["engine"] == "BLENDER_EEVEE"
+    assert payload["blenderVersion"] == "5.2.0 LTS test"
+    assert client.get(payload["output"]["url"]).content.startswith(b"\x89PNG")
+
+    duplicate = client.post(
+        "/api/projects/render-model/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal"},
+    )
+    assert duplicate.status_code == 202
+    assert duplicate.json()["renderId"] == payload["renderId"]
+    assert duplicate.json()["status"] == "ready"
+
+
+def test_render_failure_is_persisted(tmp_path: Path) -> None:
+    with TestClient(
+        create_app(tmp_path, optimizer=CopyOptimizer(), renderer=FailingRenderer())
+    ) as client:
+        publish_model(client, "render-failure")
+        accepted = client.post(
+            "/api/projects/render-failure/renders",
+            json={"sceneRevision": 1, "styleId": "warm-minimal"},
+        )
+        manifest = client.get("/api/projects/render-failure/renders/latest")
+
+    assert accepted.status_code == 202
+    assert manifest.status_code == 200
+    assert manifest.json()["status"] == "failed"
+    assert manifest.json()["error"] == "synthetic render failure"
+
+
+def test_render_incomplete_report_is_rejected(tmp_path: Path) -> None:
+    with TestClient(
+        create_app(tmp_path, optimizer=CopyOptimizer(), renderer=IncompleteRenderer())
+    ) as client:
+        publish_model(client, "incomplete-render")
+        client.post(
+            "/api/projects/incomplete-render/renders",
+            json={"sceneRevision": 1, "styleId": "warm-minimal"},
+        )
+        manifest = client.get("/api/projects/incomplete-render/renders/latest")
+
+    assert manifest.json()["status"] == "failed"
+    assert manifest.json()["error"] == "render worker returned incomplete metadata"

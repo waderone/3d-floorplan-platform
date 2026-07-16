@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://floorplan.local/schemas/style-pack-1.0.json",
+  "title": "3D Floorplan Style Pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "name",
+    "description",
+    "license",
+    "materials",
+    "environment",
+    "camera",
+    "output",
+    "assets",
+    "layout"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "license": { "$ref": "#/$defs/license" },
+    "materials": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/material" }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backgroundColor",
+        "ambientColor",
+        "ambientIntensity",
+        "sunColor",
+        "sunIntensity",
+        "sunDirection"
+      ],
+      "properties": {
+        "backgroundColor": { "$ref": "#/$defs/color" },
+        "ambientColor": { "$ref": "#/$defs/color" },
+        "ambientIntensity": { "type": "number", "minimum": 0, "maximum": 20 },
+        "sunColor": { "$ref": "#/$defs/color" },
+        "sunIntensity": { "type": "number", "minimum": 0, "maximum": 20 },
+        "sunDirection": { "$ref": "#/$defs/vector3" }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alphaDegrees", "betaDegrees", "radiusMultiplier"],
+      "properties": {
+        "alphaDegrees": { "type": "number", "minimum": -360, "maximum": 360 },
+        "betaDegrees": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 90 },
+        "radiusMultiplier": { "type": "number", "minimum": 0.5, "maximum": 4 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "samples"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 320, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 240, "maximum": 4096 },
+        "samples": { "type": "integer", "minimum": 1, "maximum": 1024 }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "source", "license"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+          "kind": { "const": "procedural" },
+          "source": { "const": "project-authored" },
+          "license": { "$ref": "#/$defs/license" }
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["floorPadding", "placements"],
+      "properties": {
+        "floorPadding": { "type": "number", "minimum": 0, "maximum": 20 },
+        "placements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placement" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "size3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "source"],
+      "properties": {
+        "spdx": { "const": "LicenseRef-Project-Authored" },
+        "source": { "const": "project-authored" }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseColor", "metallic", "roughness"],
+      "properties": {
+        "baseColor": { "$ref": "#/$defs/color" },
+        "metallic": { "type": "number", "minimum": 0, "maximum": 1 },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "assetId", "kind", "role", "position", "size", "rotationYDegrees"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+        "assetId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+        "kind": { "enum": ["box", "cylinder", "sphere"] },
+        "role": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "size": { "$ref": "#/$defs/size3" },
+        "rotationYDegrees": { "type": "number", "minimum": -360, "maximum": 360 }
+      }
+    }
+  }
+}

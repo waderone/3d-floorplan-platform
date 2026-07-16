@@ -15,6 +15,7 @@ from fastapi import (
     Form,
     HTTPException,
     Path as ApiPath,
+    Query,
     Response,
     UploadFile,
 )
@@ -30,12 +31,20 @@ from .artifacts import (
     NodeGlbOptimizer,
     validate_glb,
 )
+from .renders import (
+    BlenderRenderer,
+    RenderBackend,
+    RenderManifest,
+    RenderStore,
+)
+from .styles import STYLE_ID_RE, StyleCatalog, StylePack, StyleSummary
 
 
 PROJECT_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
 PROJECT_ID_RE = re.compile(PROJECT_ID_PATTERN)
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 ProjectId = Annotated[str, ApiPath(pattern=PROJECT_ID_PATTERN)]
+StyleId = Annotated[str, ApiPath(pattern=STYLE_ID_RE.pattern)]
 
 
 class PascalSceneGraph(BaseModel):
@@ -90,6 +99,13 @@ class SceneEnvelope(BaseModel):
 
 class SceneSaveRequest(SceneEnvelope):
     expected_revision: int | None = Field(alias="expectedRevision", ge=0)
+
+
+class RenderCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    scene_revision: int = Field(alias="sceneRevision", ge=1)
+    style_id: str = Field(alias="styleId", pattern=STYLE_ID_RE.pattern)
 
 
 class SceneStore:
@@ -164,6 +180,8 @@ def _detect_image(content: bytes, declared_type: str | None) -> tuple[str, str]:
 def create_app(
     data_dir: Path | None = None,
     optimizer: GlbOptimizer | None = None,
+    renderer: RenderBackend | None = None,
+    style_directory: Path | None = None,
 ) -> FastAPI:
     root = (data_dir or Path(os.getenv("FLOORPLAN_DATA_DIR", "data"))).expanduser().resolve()
     assets_dir = root / "assets"
@@ -172,9 +190,13 @@ def create_app(
     store = SceneStore(root / "scenes")
     artifact_store = ArtifactStore(root / "artifacts")
     artifact_optimizer = optimizer or NodeGlbOptimizer()
+    style_catalog = StyleCatalog(style_directory)
+    render_store = RenderStore(root / "renders")
+    render_backend = renderer or BlenderRenderer()
 
-    app = FastAPI(title="3D Floorplan API", version="0.2.0")
+    app = FastAPI(title="3D Floorplan API", version="0.3.0")
     app.state.data_dir = root
+    app.state.style_catalog = style_catalog
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -187,6 +209,7 @@ def create_app(
         StaticFiles(directory=artifact_store.directory),
         name="artifacts",
     )
+    app.mount("/renders", StaticFiles(directory=render_store.directory), name="renders")
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -314,6 +337,101 @@ def create_app(
             raise HTTPException(
                 status_code=404,
                 detail={"code": "artifact_not_found", "projectId": project_id},
+            )
+        return manifest
+
+    @app.get("/api/styles", response_model=list[StyleSummary])
+    def list_styles() -> list[StyleSummary]:
+        return style_catalog.list()
+
+    @app.get("/api/styles/{style_id}", response_model=StylePack)
+    def get_style(style_id: StyleId) -> StylePack:
+        style = style_catalog.get(style_id)
+        if style is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "style_not_found", "styleId": style_id},
+            )
+        return style
+
+    @app.post(
+        "/api/projects/{project_id}/renders",
+        response_model=RenderManifest,
+        status_code=202,
+    )
+    def create_render(
+        project_id: ProjectId,
+        request: RenderCreateRequest,
+        background_tasks: BackgroundTasks,
+    ) -> RenderManifest:
+        scene = store.load(project_id)
+        if scene is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "scene_not_found", "projectId": project_id},
+            )
+        if scene.revision != request.scene_revision:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "scene_revision_mismatch",
+                    "currentRevision": scene.revision,
+                },
+            )
+        style = style_catalog.get(request.style_id)
+        if style is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "style_not_found", "styleId": request.style_id},
+            )
+        artifact = artifact_store.load_latest(project_id)
+        if (
+            artifact is None
+            or artifact.status != "ready"
+            or artifact.scene_revision != request.scene_revision
+            or artifact.optimized is None
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "artifact_not_ready",
+                    "sceneRevision": request.scene_revision,
+                },
+            )
+        manifest, should_process = render_store.begin(
+            project_id,
+            request.scene_revision,
+            artifact.artifact_id,
+            style,
+        )
+        if should_process:
+            background_tasks.add_task(
+                render_store.process,
+                manifest.render_id,
+                render_backend,
+                artifact_store.directory / artifact.artifact_id / "optimized.glb",
+                style_catalog.path_for(style.id),
+                style,
+            )
+        return manifest
+
+    @app.get(
+        "/api/projects/{project_id}/renders/latest",
+        response_model=RenderManifest,
+    )
+    def get_latest_render(
+        project_id: ProjectId,
+        style_id: Annotated[str, Query(alias="styleId", pattern=STYLE_ID_RE.pattern)] = "warm-minimal",
+    ) -> RenderManifest:
+        manifest = render_store.load_latest(project_id, style_id)
+        if manifest is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "render_not_found",
+                    "projectId": project_id,
+                    "styleId": style_id,
+                },
             )
         return manifest
 
