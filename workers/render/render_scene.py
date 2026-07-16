@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -18,6 +19,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--style", required=True, type=Path)
     parser.add_argument("--layout", required=True, type=Path)
+    parser.add_argument("--catalog", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
     return parser.parse_args(arguments)
@@ -54,9 +56,34 @@ def load_layout(path: Path, style: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("layout manifest is invalid")
     if value["style"] != {"id": style["id"], "version": style["version"]}:
         raise ValueError("layout manifest style does not match the style pack")
-    if value["status"] not in {"ready", "fallback"} or not isinstance(value["placements"], list):
+    if value["status"] not in {"ready", "partial", "fallback"} or not isinstance(value["placements"], list):
         raise ValueError("layout manifest status is invalid")
     return value
+
+
+def load_catalog(path: Path, layout: dict[str, Any]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    required = {"schemaVersion", "id", "version", "assets"}
+    if not isinstance(value, dict) or not required.issubset(value) or not isinstance(value["assets"], list):
+        raise ValueError("asset catalog is invalid")
+    if layout.get("assetCatalog") != {"id": value["id"], "version": value["version"]}:
+        raise ValueError("layout manifest asset catalog does not match")
+    assets = {
+        asset["id"]: asset
+        for asset in value["assets"]
+        if isinstance(asset, dict) and isinstance(asset.get("id"), str)
+    }
+    if len(assets) != len(value["assets"]):
+        raise ValueError("asset catalog ids are invalid or duplicated")
+    for asset in assets.values():
+        delivery = asset.get("delivery")
+        if delivery is None:
+            continue
+        model_path = path.parent / "models" / Path(delivery["url"]).name
+        content = model_path.read_bytes()
+        if len(content) != delivery["bytes"] or hashlib.sha256(content).hexdigest() != delivery["sha256"]:
+            raise ValueError(f"asset catalog model integrity failed: {asset['id']}")
+    return value, assets
 
 
 def create_material(name: str, value: dict[str, Any]) -> bpy.types.Material:
@@ -135,6 +162,47 @@ def create_primitive(
     return obj
 
 
+def create_catalog_model(
+    placement: dict[str, Any],
+    asset: dict[str, Any],
+    catalog_path: Path,
+    floor_top: float,
+) -> list[bpy.types.Object]:
+    delivery = asset.get("delivery")
+    if asset.get("kind") != "model" or not isinstance(delivery, dict):
+        return []
+    model_path = catalog_path.parent / "models" / Path(delivery["url"]).name
+    before = set(bpy.context.scene.objects)
+    try:
+        bpy.ops.import_scene.gltf(filepath=str(model_path), import_shading="NORMALS")
+        imported = [obj for obj in bpy.context.scene.objects if obj not in before]
+        meshes = [obj for obj in imported if obj.type == "MESH"]
+        if not meshes:
+            raise RuntimeError("catalog GLB contains no meshes")
+        roots = [obj for obj in imported if obj.parent not in imported]
+        root = bpy.data.objects.new(f"asset-{placement['id']}", None)
+        bpy.context.collection.objects.link(root)
+        for obj in roots:
+            obj.parent = root
+        width, height, depth = (float(value) for value in placement["size"])
+        source_width, source_height, source_depth = (
+            float(value) for value in asset["canonicalSize"]
+        )
+        root.scale = (
+            width / source_width,
+            depth / source_depth,
+            height / source_height,
+        )
+        x, y, z = (float(value) for value in placement["position"])
+        root.location = (x, z, floor_top + y - height / 2)
+        root.rotation_euler[2] = math.radians(float(placement["rotationYDegrees"]))
+        return meshes
+    except Exception:
+        for obj in [obj for obj in bpy.context.scene.objects if obj not in before]:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        return []
+
+
 def point_at(obj: bpy.types.Object, target: Vector) -> None:
     obj.rotation_euler = (target - obj.location).to_track_quat("-Z", "Y").to_euler()
 
@@ -154,8 +222,10 @@ def add_area_light(name: str, location: Vector, target: Vector, color: str, ener
 def configure_scene(
     style: dict[str, Any],
     layout: dict[str, Any],
+    catalog_path: Path,
+    assets: dict[str, dict[str, Any]],
     imported: list[bpy.types.Object],
-) -> int:
+) -> tuple[int, int, int]:
     scene = bpy.context.scene
     materials = {
         role: create_material(role, value) for role, value in style["materials"].items()
@@ -179,23 +249,35 @@ def configure_scene(
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     apply_material(floor, materials["floor"])
 
-    procedural = [
-        create_primitive(placement, floor_top, materials[placement["role"]])
-        for placement in layout["placements"]
-    ]
-    all_meshes = imported + [floor] + procedural
+    furniture_meshes: list[bpy.types.Object] = []
+    procedural: list[bpy.types.Object] = []
+    real_asset_placements = 0
+    fallback_placements = 0
+    for placement in layout["placements"]:
+        asset = assets.get(placement["assetId"])
+        if asset is None:
+            raise ValueError(f"layout references missing asset: {placement['assetId']}")
+        model_meshes = create_catalog_model(placement, asset, catalog_path, floor_top)
+        if model_meshes:
+            furniture_meshes.extend(model_meshes)
+            real_asset_placements += 1
+            continue
+        fallback = create_primitive(placement, floor_top, materials[placement["role"]])
+        procedural.append(fallback)
+        if asset.get("kind") == "model":
+            fallback_placements += 1
+    all_meshes = imported + [floor] + furniture_meshes + procedural
     styled_minimum, styled_maximum = mesh_bounds(all_meshes)
-    selected_room = next(
-        (room for room in layout["rooms"] if room["id"] == layout["selectedRoomId"]),
-        None,
-    )
-    if selected_room:
-        room_x = [float(point[0]) for point in selected_room["polygon"]]
-        room_y = [float(point[1]) for point in selected_room["polygon"]]
+    furnished_rooms = [
+        room for room in layout["rooms"] if room["id"] in layout.get("furnishedRoomIds", [])
+    ]
+    if furnished_rooms:
+        room_x = [float(point[0]) for room in furnished_rooms for point in room["polygon"]]
+        room_y = [float(point[1]) for room in furnished_rooms for point in room["polygon"]]
         target = Vector(
             (
-                float(selected_room["centroid"][0]),
-                float(selected_room["centroid"][1]),
+                (min(room_x) + max(room_x)) / 2,
+                (min(room_y) + max(room_y)) / 2,
                 floor_top + max(0.8, (styled_maximum.z - floor_top) * 0.42),
             )
         )
@@ -215,7 +297,8 @@ def configure_scene(
     background.inputs["Color"].default_value = hex_color(environment["backgroundColor"])
     background.inputs["Strength"].default_value = float(environment["ambientIntensity"]) * 0.32
 
-    radius = max(7.0, focus_diagonal * 0.92)
+    radius_factor = 1.5 if len(furnished_rooms) > 1 else 0.92
+    radius = max(7.0, focus_diagonal * radius_factor)
     add_area_light(
         "style-key",
         target + Vector((radius * 0.45, -radius * 0.5, radius * 0.75)),
@@ -233,7 +316,10 @@ def configure_scene(
 
     camera_value = style["camera"]
     alpha = math.radians(float(camera_value["alphaDegrees"]))
-    beta = math.radians(float(camera_value["betaDegrees"]))
+    beta_degrees = float(camera_value["betaDegrees"])
+    if len(furnished_rooms) > 1:
+        beta_degrees = min(beta_degrees, 42)
+    beta = math.radians(beta_degrees)
     camera_radius = radius * float(camera_value["radiusMultiplier"])
     direction = Vector(
         (
@@ -261,7 +347,7 @@ def configure_scene(
     scene.render.image_settings.color_mode = "RGB"
     scene.render.film_transparent = False
     scene.view_settings.look = "AgX - Medium High Contrast"
-    return len(all_meshes)
+    return len(all_meshes), real_asset_placements, fallback_placements
 
 
 def main() -> None:
@@ -269,12 +355,19 @@ def main() -> None:
     args = parse_arguments()
     style = load_style(args.style)
     layout = load_layout(args.layout, style)
+    catalog, assets = load_catalog(args.catalog, layout)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(args.input), import_shading="NORMALS")
     imported = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
-    object_count = configure_scene(style, layout, imported)
+    object_count, real_asset_placements, fallback_placements = configure_scene(
+        style,
+        layout,
+        args.catalog,
+        assets,
+        imported,
+    )
     bpy.context.scene.render.filepath = str(args.output)
     bpy.ops.render.render(write_still=True)
     report = {
@@ -287,6 +380,10 @@ def main() -> None:
         "layoutId": layout["layoutId"],
         "layoutStatus": layout["status"],
         "placements": len(layout["placements"]),
+        "assetCatalogId": catalog["id"],
+        "assetCatalogVersion": catalog["version"],
+        "realAssetPlacements": real_asset_placements,
+        "fallbackPlacements": fallback_placements,
     }
     args.report.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
 

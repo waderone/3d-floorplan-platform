@@ -54,11 +54,14 @@ class CopyRenderer:
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         output_png: Path,
     ) -> dict[str, Any]:
         style = json.loads(style_path.read_text(encoding="utf-8"))
         layout = json.loads(layout_path.read_text(encoding="utf-8"))
+        catalog = json.loads(asset_catalog_path.read_text(encoding="utf-8"))
         assert layout["style"]["id"] == style["id"]
+        assert layout["assetCatalog"] == {"id": catalog["id"], "version": catalog["version"]}
         output = style["output"]
         png_header = (
             b"\x89PNG\r\n\x1a\n"
@@ -67,10 +70,18 @@ class CopyRenderer:
             + struct.pack(">IIBBBBB", output["width"], output["height"], 8, 2, 0, 0, 0)
         )
         output_png.write_bytes(png_header)
+        model_ids = {asset["id"] for asset in catalog["assets"] if asset["kind"] == "model"}
+        real_asset_placements = sum(
+            placement["assetId"] in model_ids for placement in layout["placements"]
+        )
         return {
             "engine": "BLENDER_EEVEE",
             "blenderVersion": "5.2.0 LTS test",
             "renderSeconds": 0.01,
+            "assetCatalogId": catalog["id"],
+            "assetCatalogVersion": catalog["version"],
+            "realAssetPlacements": real_asset_placements,
+            "fallbackPlacements": 0,
         }
 
 
@@ -80,6 +91,7 @@ class FailingRenderer:
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         output_png: Path,
     ) -> dict[str, Any]:
         raise RuntimeError("synthetic render failure")
@@ -91,9 +103,10 @@ class IncompleteRenderer(CopyRenderer):
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         output_png: Path,
     ) -> dict[str, Any]:
-        super().render(source_glb, style_path, layout_path, output_png)
+        super().render(source_glb, style_path, layout_path, asset_catalog_path, output_png)
         return {}
 
 
@@ -593,7 +606,7 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     layout = client.get("/api/projects/render-model/layout").json()
     assert payload["status"] == "ready"
     assert payload["artifactId"] == artifact["artifactId"]
-    assert payload["pipelineVersion"] == "blender-5x-style-layout-v2"
+    assert payload["pipelineVersion"] == "blender-5x-multiroom-assets-v6"
     assert payload["style"] == {"id": "warm-minimal", "version": 2}
     assert len(payload["layoutId"]) == 64
     assert payload["layoutId"] == layout["layoutId"]

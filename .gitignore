@@ -38,6 +38,7 @@ venv/
 *.glb
 *.gltf
 *.bin
+!packages/asset-catalog/models/*.glb
 
 # Local object storage and databases
 .minio/

@@ -31,6 +31,7 @@ from .artifacts import (
     NodeGlbOptimizer,
     validate_glb,
 )
+from .assets import AssetCatalog, AssetCatalogManifest
 from .layouts import LayoutManifest, generate_layout
 from .renders import (
     BlenderRenderer,
@@ -183,6 +184,7 @@ def create_app(
     optimizer: GlbOptimizer | None = None,
     renderer: RenderBackend | None = None,
     style_directory: Path | None = None,
+    asset_catalog_path: Path | None = None,
 ) -> FastAPI:
     root = (data_dir or Path(os.getenv("FLOORPLAN_DATA_DIR", "data"))).expanduser().resolve()
     assets_dir = root / "assets"
@@ -192,12 +194,14 @@ def create_app(
     artifact_store = ArtifactStore(root / "artifacts")
     artifact_optimizer = optimizer or NodeGlbOptimizer()
     style_catalog = StyleCatalog(style_directory)
+    asset_catalog = AssetCatalog(asset_catalog_path)
     render_store = RenderStore(root / "renders")
     render_backend = renderer or BlenderRenderer()
 
-    app = FastAPI(title="3D Floorplan API", version="0.4.0")
+    app = FastAPI(title="3D Floorplan API", version="0.5.0")
     app.state.data_dir = root
     app.state.style_catalog = style_catalog
+    app.state.asset_catalog = asset_catalog
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -211,6 +215,11 @@ def create_app(
         name="artifacts",
     )
     app.mount("/renders", StaticFiles(directory=render_store.directory), name="renders")
+    app.mount(
+        "/catalog-assets",
+        StaticFiles(directory=asset_catalog.directory),
+        name="catalog-assets",
+    )
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -355,6 +364,10 @@ def create_app(
             )
         return style
 
+    @app.get("/api/asset-catalog", response_model=AssetCatalogManifest)
+    def get_asset_catalog() -> AssetCatalogManifest:
+        return asset_catalog.manifest
+
     @app.get(
         "/api/projects/{project_id}/layout",
         response_model=LayoutManifest,
@@ -375,7 +388,7 @@ def create_app(
                 status_code=404,
                 detail={"code": "style_not_found", "styleId": style_id},
             )
-        return generate_layout(project_id, scene.revision, scene.scene.nodes, style)
+        return generate_layout(project_id, scene.revision, scene.scene.nodes, style, asset_catalog)
 
     @app.post(
         "/api/projects/{project_id}/renders",
@@ -426,7 +439,7 @@ def create_app(
             request.scene_revision,
             artifact.artifact_id,
             style,
-            generate_layout(project_id, scene.revision, scene.scene.nodes, style),
+            generate_layout(project_id, scene.revision, scene.scene.nodes, style, asset_catalog),
         )
         if should_process:
             background_tasks.add_task(
@@ -436,6 +449,7 @@ def create_app(
                 artifact_store.directory / artifact.artifact_id / "optimized.glb",
                 style_catalog.path_for(style.id),
                 render_store.layout_path(manifest.render_id),
+                asset_catalog.manifest_path,
                 style,
             )
         return manifest

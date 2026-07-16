@@ -8,10 +8,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .assets import AssetCatalog, RoomType
 from .styles import StylePack, StylePlacement
 
 
-LAYOUT_PIPELINE_VERSION = "room-aware-layout-v1"
+LAYOUT_PIPELINE_VERSION = "multiroom-asset-layout-v2"
 Point2D = tuple[float, float]
 
 
@@ -27,6 +28,7 @@ class LayoutRoom(BaseModel):
 
     id: str
     name: str
+    room_type: RoomType = Field(alias="roomType")
     source: Literal["zone", "slab"]
     level_id: str | None = Field(alias="levelId")
     polygon: list[Point2D]
@@ -52,18 +54,24 @@ class LayoutPlacement(BaseModel):
 class LayoutManifest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    schema_version: Literal["2.0"] = Field(alias="schemaVersion")
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
-    pipeline_version: Literal["room-aware-layout-v1"] = Field(alias="pipelineVersion")
+    pipeline_version: Literal["multiroom-asset-layout-v2"] = Field(alias="pipelineVersion")
     project_id: str = Field(alias="projectId")
     scene_revision: int = Field(alias="sceneRevision", ge=1)
     style: LayoutStyleReference
-    status: Literal["ready", "fallback"]
-    fallback_reason: Literal["no-room-polygon", "no-room-fits"] | None = Field(
+    asset_catalog: LayoutStyleReference = Field(alias="assetCatalog")
+    status: Literal["ready", "partial", "fallback"]
+    fallback_reason: Literal["no-room-polygon", "no-supported-room", "no-room-fits"] | None = Field(
         alias="fallbackReason",
         default=None,
     )
     selected_room_id: str | None = Field(alias="selectedRoomId", default=None)
+    furnished_room_ids: list[str] = Field(alias="furnishedRoomIds")
+    unfurnished_room_ids: list[str] = Field(alias="unfurnishedRoomIds")
+    referenced_asset_bytes: int = Field(alias="referencedAssetBytes", ge=0)
+    mobile_asset_budget_bytes: int = Field(alias="mobileAssetBudgetBytes", gt=0)
+    mobile_asset_budget_exceeded: bool = Field(alias="mobileAssetBudgetExceeded")
     wall_clearance: float = Field(alias="wallClearance", ge=0)
     item_clearance: float = Field(alias="itemClearance", ge=0)
     rooms: list[LayoutRoom]
@@ -134,6 +142,22 @@ def _parse_polygon(value: Any) -> list[Point2D] | None:
     return polygon
 
 
+def _classify_room(node: dict[str, Any], name: str) -> RoomType:
+    explicit = node.get("roomType")
+    if explicit in {"living", "dining", "bedroom", "other"}:
+        return explicit
+    normalized = "".join(name.lower().split())
+    if any(keyword in normalized for keyword in ("客餐", "livingdining")):
+        return "living"
+    if any(keyword in normalized for keyword in ("卧室", "主卧", "次卧", "bedroom")):
+        return "bedroom"
+    if any(keyword in normalized for keyword in ("餐厅", "餐区", "dining")):
+        return "dining"
+    if any(keyword in normalized for keyword in ("客厅", "起居", "living", "lounge")):
+        return "living"
+    return "other"
+
+
 def extract_rooms(nodes: dict[str, dict[str, Any]]) -> list[LayoutRoom]:
     candidates: list[LayoutRoom] = []
     for source in ("zone", "slab"):
@@ -143,10 +167,12 @@ def extract_rooms(nodes: dict[str, dict[str, Any]]) -> list[LayoutRoom]:
             polygon = _parse_polygon(node.get("polygon"))
             if polygon is None:
                 continue
+            name = node.get("name") if isinstance(node.get("name"), str) else node_id
             candidates.append(
                 LayoutRoom(
                     id=node_id,
-                    name=node.get("name") if isinstance(node.get("name"), str) else node_id,
+                    name=name,
+                    roomType=_classify_room(node, name),
                     source=source,
                     levelId=node.get("parentId") if isinstance(node.get("parentId"), str) else None,
                     polygon=polygon,
@@ -354,14 +380,19 @@ def generate_layout(
     scene_revision: int,
     nodes: dict[str, dict[str, Any]],
     style: StylePack,
+    asset_catalog: AssetCatalog,
 ) -> LayoutManifest:
     rooms = extract_rooms(nodes)
     base = {
-        "schemaVersion": "1.0",
+        "schemaVersion": "2.0",
         "pipelineVersion": LAYOUT_PIPELINE_VERSION,
         "projectId": project_id,
         "sceneRevision": scene_revision,
         "style": {"id": style.id, "version": style.version},
+        "assetCatalog": {
+            "id": asset_catalog.manifest.id,
+            "version": asset_catalog.manifest.version,
+        },
         "wallClearance": style.layout.wall_clearance,
         "itemClearance": style.layout.item_clearance,
         "rooms": [room.model_dump(by_alias=True, mode="json") for room in rooms],
@@ -372,24 +403,53 @@ def generate_layout(
             "status": "fallback",
             "fallbackReason": "no-room-polygon",
             "selectedRoomId": None,
+            "furnishedRoomIds": [],
+            "unfurnishedRoomIds": [],
+            "referencedAssetBytes": 0,
+            "mobileAssetBudgetBytes": asset_catalog.manifest.mobile_budget_bytes,
+            "mobileAssetBudgetExceeded": False,
             "placements": [],
         }
         return LayoutManifest(layoutId=_identity_payload(payload), **payload)
 
-    bounds = _item_bounds(style.layout.placements)
-    if not _items_have_clearance(bounds, style.layout.item_clearance):
-        raise ValueError(f"style {style.id} furniture template violates item clearance")
-    all_points = [
-        point
-        for placement in style.layout.placements
-        if placement.collision_mode == "solid"
-        for point in _rotated_corners(placement)
-    ]
-    template_center = (
-        (min(point[0] for point in all_points) + max(point[0] for point in all_points)) / 2,
-        (min(point[1] for point in all_points) + max(point[1] for point in all_points)) / 2,
-    )
+    placements: list[LayoutPlacement] = []
+    furnished_room_ids: list[str] = []
+    unfurnished_room_ids: list[str] = []
     for room in rooms:
+        recipe = asset_catalog.recipe(room.room_type)
+        if not recipe:
+            unfurnished_room_ids.append(room.id)
+            continue
+        template = [
+            StylePlacement(
+                id=entry.id,
+                itemId=entry.item_id,
+                assetId=entry.asset_id,
+                kind=asset_catalog.assets[entry.asset_id].fallback.kind,
+                role=entry.role,
+                collisionMode=entry.collision_mode,
+                position=entry.position,
+                size=asset_catalog.assets[entry.asset_id].canonical_size,
+                rotationYDegrees=entry.rotation_y_degrees,
+            )
+            for entry in recipe
+        ]
+        missing_roles = sorted({entry.role for entry in template if entry.role not in style.materials})
+        if missing_roles:
+            raise ValueError(f"style {style.id} lacks catalog material roles: {missing_roles}")
+        bounds = _item_bounds(template)
+        if not _items_have_clearance(bounds, style.layout.item_clearance):
+            raise ValueError(f"{room.room_type} asset recipe violates item clearance")
+        all_points = [
+            point
+            for placement in template
+            if placement.collision_mode == "solid"
+            for point in _rotated_corners(placement)
+        ]
+        template_center = (
+            (min(point[0] for point in all_points) + max(point[0] for point in all_points)) / 2,
+            (min(point[1] for point in all_points) + max(point[1] for point in all_points)) / 2,
+        )
         translation = (
             room.centroid[0] - template_center[0],
             room.centroid[1] - template_center[1],
@@ -398,10 +458,11 @@ def generate_layout(
             _bounds_fit_room(item_bounds, translation, room, style.layout.wall_clearance)
             for item_bounds in bounds.values()
         ):
+            unfurnished_room_ids.append(room.id)
             continue
-        placements = [
+        placements.extend(
             LayoutPlacement(
-                id=placement.id,
+                id=f"{room.id}-{placement.id}",
                 itemId=placement.item_id,
                 roomId=room.id,
                 assetId=placement.asset_id,
@@ -416,25 +477,41 @@ def generate_layout(
                 size=placement.size,
                 rotationYDegrees=placement.rotation_y_degrees,
             )
-            for placement in style.layout.placements
-        ]
-        payload = {
-            **base,
-            "status": "ready",
-            "fallbackReason": None,
-            "selectedRoomId": room.id,
-            "placements": [
-                placement.model_dump(by_alias=True, mode="json")
-                for placement in placements
-            ],
-        }
-        return LayoutManifest(layoutId=_identity_payload(payload), **payload)
+            for placement in template
+        )
+        furnished_room_ids.append(room.id)
 
+    referenced_asset_ids = {
+        placement.asset_id
+        for placement in placements
+        if asset_catalog.assets[placement.asset_id].delivery is not None
+    }
+    referenced_asset_bytes = sum(
+        asset_catalog.assets[asset_id].delivery.bytes  # type: ignore[union-attr]
+        for asset_id in referenced_asset_ids
+    )
+    supported_rooms = [room for room in rooms if room.room_type != "other"]
+    if furnished_room_ids:
+        status = "ready" if len(furnished_room_ids) == len(rooms) else "partial"
+        fallback_reason = None
+    else:
+        status = "fallback"
+        fallback_reason = "no-room-fits" if supported_rooms else "no-supported-room"
     payload = {
         **base,
-        "status": "fallback",
-        "fallbackReason": "no-room-fits",
-        "selectedRoomId": None,
-        "placements": [],
+        "status": status,
+        "fallbackReason": fallback_reason,
+        "selectedRoomId": furnished_room_ids[0] if furnished_room_ids else None,
+        "furnishedRoomIds": furnished_room_ids,
+        "unfurnishedRoomIds": unfurnished_room_ids,
+        "referencedAssetBytes": referenced_asset_bytes,
+        "mobileAssetBudgetBytes": asset_catalog.manifest.mobile_budget_bytes,
+        "mobileAssetBudgetExceeded": (
+            referenced_asset_bytes > asset_catalog.manifest.mobile_budget_bytes
+        ),
+        "placements": [
+            placement.model_dump(by_alias=True, mode="json")
+            for placement in placements
+        ],
     }
     return LayoutManifest(layoutId=_identity_payload(payload), **payload)

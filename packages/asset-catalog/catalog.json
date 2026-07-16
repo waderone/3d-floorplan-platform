@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "1.0",
+  "id": "starter-furniture",
+  "version": 1,
+  "mobileBudgetBytes": 2097152,
+  "sourcePackage": {
+    "name": "Kenney Furniture Kit",
+    "siteVersion": "1.0",
+    "embeddedVersion": "2.0",
+    "author": "Kenney",
+    "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+    "downloadUrl": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
+    "sha256": "e67652d0932cee41683f74711c03d3e192a2af9979ef8e6b237711f5482d46b0",
+    "license": {
+      "spdx": "CC0-1.0",
+      "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "localNotice": "LICENSE-KENNEY.txt"
+    }
+  },
+  "assets": [
+    {
+      "id": "kenney-lounge-sofa",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceEntry": "Models/OBJ format/loungeDesignSofa.obj",
+      "sourceSha256": "0f5b9820b616db3f9ce4ff018eeb4088343c1fc32216df87dc34b9e0d74fea49",
+      "sourceMaterialSha256": "a493fa76745d752d4f10d93e1b07f2558a56a79e6a05536c4b8815a0f16391da",
+      "canonicalSize": [2.24, 0.8, 0.82],
+      "delivery": {
+        "url": "/catalog-assets/models/kenney-lounge-sofa.glb",
+        "sha256": "798fd1f216f17f04615f57347db128533635895ff167005c874ce70d6a012dc1",
+        "bytes": 9768
+      },
+      "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "kenney-coffee-table",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceEntry": "Models/OBJ format/tableCoffee.obj",
+      "sourceSha256": "a50abcd31f11b424d278756d65734193453030cf4a7c6966459e03150858885b",
+      "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
+      "canonicalSize": [1.321992, 0.46, 0.8],
+      "delivery": {
+        "url": "/catalog-assets/models/kenney-coffee-table.glb",
+        "sha256": "7f304740a4398d6c5a528b305bc63d4d73c3dfd91f72e0090d38530ceef33c88",
+        "bytes": 8324
+      },
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "kenney-dining-table-round",
+      "kind": "model",
+      "roomTypes": ["dining"],
+      "sourceEntry": "Models/OBJ format/tableRound.obj",
+      "sourceSha256": "86229eabad9489986d6f8a3cec816ac839d402d0e46e6894767d9e03493cb16e",
+      "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
+      "canonicalSize": [1.385641, 0.733468, 1.6],
+      "delivery": {
+        "url": "/catalog-assets/models/kenney-dining-table-round.glb",
+        "sha256": "860a64ee14f523e8dfdc8ad5a18959d0b2ce60b40ef160356712dfaf10f5d993",
+        "bytes": 6244
+      },
+      "fallback": {"kind": "cylinder", "materialRole": "wood"}
+    },
+    {
+      "id": "kenney-dining-chair",
+      "kind": "model",
+      "roomTypes": ["dining"],
+      "sourceEntry": "Models/OBJ format/chair.obj",
+      "sourceSha256": "73b0cc678606b37302bfb66192a007855ce9a7826f8824e04e75f8a413a82f02",
+      "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
+      "canonicalSize": [0.4, 0.94, 0.4],
+      "delivery": {
+        "url": "/catalog-assets/models/kenney-dining-chair.glb",
+        "sha256": "b2697030dba8ef6e88addaff706c3af26e5a0f95ccfa03a0c9d179af4984a218",
+        "bytes": 10384
+      },
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "kenney-bed-double",
+      "kind": "model",
+      "roomTypes": ["bedroom"],
+      "sourceEntry": "Models/OBJ format/bedDouble.obj",
+      "sourceSha256": "965391d067fdb1604a06fc0c0a745976dc34b3d13d0bc9043328cdccc9588330",
+      "sourceMaterialSha256": "c68f3b5128ae18ed9a1723a1363b1c56cbbb17ae12de246de26af761ec822fc0",
+      "canonicalSize": [1.912, 0.75, 2.25],
+      "delivery": {
+        "url": "/catalog-assets/models/kenney-bed-double.glb",
+        "sha256": "609f446a8c61125f48123a3c283d7c5d32d144a4985bcb675897f49116565043",
+        "bytes": 20948
+      },
+      "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "project-rug",
+      "kind": "procedural",
+      "roomTypes": ["living", "bedroom"],
+      "canonicalSize": [3.2, 0.05, 2.5],
+      "fallback": {"kind": "box", "materialRole": "accent"}
+    },
+    {
+      "id": "project-sideboard",
+      "kind": "procedural",
+      "roomTypes": ["living"],
+      "canonicalSize": [1.8, 0.84, 0.42],
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "project-nightstand",
+      "kind": "procedural",
+      "roomTypes": ["bedroom"],
+      "canonicalSize": [0.45, 0.6, 0.45],
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    }
+  ],
+  "roomRecipes": {
+    "living": [
+      {"id": "living-sofa", "itemId": "living-sofa", "assetId": "kenney-lounge-sofa", "role": "fabric", "collisionMode": "solid", "position": [0, 0.4, 1.45], "rotationYDegrees": 0},
+      {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "kenney-coffee-table", "role": "wood", "collisionMode": "solid", "position": [0, 0.23, -0.1], "rotationYDegrees": 0},
+      {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "project-sideboard", "role": "wood", "collisionMode": "solid", "position": [0, 0.42, -1.55], "rotationYDegrees": 0},
+      {"id": "living-rug", "itemId": "living-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.25], "rotationYDegrees": 0}
+    ],
+    "dining": [
+      {"id": "dining-table", "itemId": "dining-table", "assetId": "kenney-dining-table-round", "role": "wood", "collisionMode": "solid", "position": [0, 0.366734, 0], "rotationYDegrees": 0},
+      {"id": "dining-chair-north", "itemId": "dining-chair-north", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [0, 0.47, 1.3], "rotationYDegrees": 180},
+      {"id": "dining-chair-south", "itemId": "dining-chair-south", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [0, 0.47, -1.3], "rotationYDegrees": 0},
+      {"id": "dining-chair-east", "itemId": "dining-chair-east", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [1.25, 0.47, 0], "rotationYDegrees": -90},
+      {"id": "dining-chair-west", "itemId": "dining-chair-west", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [-1.25, 0.47, 0], "rotationYDegrees": 90}
+    ],
+    "bedroom": [
+      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "kenney-bed-double", "role": "fabric", "collisionMode": "solid", "position": [0, 0.375, 0.4], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [1.42, 0.3, 0.2], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.42, 0.3, 0.2], "rotationYDegrees": 0},
+      {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0}
+    ]
+  }
+}

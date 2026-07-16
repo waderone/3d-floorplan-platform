@@ -17,7 +17,7 @@ from .layouts import LayoutManifest
 from .styles import StylePack
 
 
-RENDER_PIPELINE_VERSION = "blender-5x-style-layout-v2"
+RENDER_PIPELINE_VERSION = "blender-5x-multiroom-assets-v6"
 MAX_RENDER_BYTES = 50 * 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -49,11 +49,14 @@ class RenderManifest(BaseModel):
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
     pipeline_version: str = Field(alias="pipelineVersion")
     style: StyleReference
+    asset_catalog: StyleReference = Field(alias="assetCatalog")
     status: Literal["processing", "ready", "failed"]
     output: RenderImageMetadata | None = None
     engine: str | None = None
     blender_version: str | None = Field(alias="blenderVersion", default=None)
     render_seconds: float | None = Field(alias="renderSeconds", default=None, ge=0)
+    real_asset_placements: int | None = Field(alias="realAssetPlacements", default=None, ge=0)
+    fallback_placements: int | None = Field(alias="fallbackPlacements", default=None, ge=0)
     error: str | None = None
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
@@ -65,6 +68,7 @@ class RenderBackend(Protocol):
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         output_png: Path,
     ) -> dict[str, Any]: ...
 
@@ -80,6 +84,7 @@ class BlenderRenderer:
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         output_png: Path,
     ) -> dict[str, Any]:
         report_path = output_png.with_suffix(".report.json")
@@ -100,6 +105,8 @@ class BlenderRenderer:
                 str(style_path),
                 "--layout",
                 str(layout_path),
+                "--catalog",
+                str(asset_catalog_path),
                 "--output",
                 str(output_png),
                 "--report",
@@ -220,6 +227,10 @@ class RenderStore:
                 layoutId=layout.layout_id,
                 pipelineVersion=RENDER_PIPELINE_VERSION,
                 style=StyleReference(id=style.id, version=style.version),
+                assetCatalog=StyleReference(
+                    id=layout.asset_catalog.id,
+                    version=layout.asset_catalog.version,
+                ),
                 status="processing",
                 createdAt=existing.created_at if existing else now,
                 updatedAt=now,
@@ -242,6 +253,7 @@ class RenderStore:
         source_glb: Path,
         style_path: Path,
         layout_path: Path,
+        asset_catalog_path: Path,
         style: StylePack,
     ) -> None:
         manifest = self.load(render_id)
@@ -253,7 +265,13 @@ class RenderStore:
         try:
             if not source_glb.is_file():
                 raise RuntimeError("optimized GLB is missing")
-            report = renderer.render(source_glb, style_path, layout_path, temporary_output)
+            report = renderer.render(
+                source_glb,
+                style_path,
+                layout_path,
+                asset_catalog_path,
+                temporary_output,
+            )
             if not temporary_output.is_file():
                 raise RuntimeError("render worker did not create an output PNG")
             width, height, size, sha256 = validate_png(temporary_output)
@@ -262,6 +280,8 @@ class RenderStore:
             engine = report.get("engine")
             blender_version = report.get("blenderVersion")
             render_seconds = report.get("renderSeconds")
+            real_asset_placements = report.get("realAssetPlacements")
+            fallback_placements = report.get("fallbackPlacements")
             if (
                 not isinstance(engine, str)
                 or not engine
@@ -270,6 +290,14 @@ class RenderStore:
                 or not isinstance(render_seconds, (int, float))
                 or isinstance(render_seconds, bool)
                 or render_seconds < 0
+                or not isinstance(real_asset_placements, int)
+                or isinstance(real_asset_placements, bool)
+                or real_asset_placements < 0
+                or not isinstance(fallback_placements, int)
+                or isinstance(fallback_placements, bool)
+                or fallback_placements < 0
+                or report.get("assetCatalogId") != manifest.asset_catalog.id
+                or report.get("assetCatalogVersion") != manifest.asset_catalog.version
             ):
                 raise RuntimeError("render worker returned incomplete metadata")
             temporary_output.replace(output_path)
@@ -286,6 +314,8 @@ class RenderStore:
                     "engine": engine,
                     "blender_version": blender_version,
                     "render_seconds": float(render_seconds),
+                    "real_asset_placements": real_asset_placements,
+                    "fallback_placements": fallback_placements,
                     "error": None,
                     "updated_at": _utcnow(),
                 }

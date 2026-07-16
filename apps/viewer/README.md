@@ -17,6 +17,7 @@ npm run dev
 
 Viewer 支持 3D/俯视/复位、鼠标与触摸相机、全屏、加载进度、优化状态轮询、错误
 重试和手机安全区。它会从 API 读取同一版本化风格包，在 GLB 上应用 PBR 建筑/地面材质、
-环境灯光和相机，并读取项目 layout manifest 按房间绝对坐标创建程序化家具。模型、风格、
-layout 的 project/revision/style 不一致会明确失败；fallback 状态会保留建筑预览并提示待补
-房间边界或房间尺寸不足。生产构建运行 `npm run build`。
+环境灯光和相机，并读取同一资产目录与 layout manifest，按房间绝对坐标加载客厅、餐厅、
+卧室真实 GLB 家具。模型、风格、layout 和目录的 project/revision/version 不一致会明确失败；
+单个模型加载失败时使用目录声明的程序化回退并显示统计，layout fallback 则保留建筑预览并
+提示缺失的房间语义或尺寸。生产构建运行 `npm run build`。

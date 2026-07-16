@@ -8,7 +8,8 @@
 - 场景图节点引用和资产元数据的最小边界校验；
 - GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
 - 版本化装修风格目录和 Blender 异步效果图状态；
-- Zone/Slab 房间提取、确定性家具布局和明确回退状态；
+- 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
+- Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
 
 数据默认保存在当前目录的 `data/` 中，也可通过
@@ -120,6 +121,7 @@ POST 使用 multipart，字段为 `file`（`model/gltf-binary`）和 `sceneRevis
 
 ### 风格与效果图
 
+- `GET /api/asset-catalog`
 - `GET /api/styles`
 - `GET /api/styles/{style_id}`
 - `GET /api/projects/{project_id}/layout?styleId=warm-minimal`
@@ -140,10 +142,11 @@ POST JSON 示例：
 1280×720 尺寸、Blender 版本、引擎、耗时和 `layoutId`，图片通过
 `/renders/.../image.png` 访问。
 
-layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。可放置时返回 `ready`、
-选定房间、全部候选房间和带 `roomId` 的绝对坐标；缺少闭合房间或尺寸不足时返回
-`fallback` 与 `no-room-polygon`/`no-room-fits`，placements 为空。三套风格只使用本项目
-原创程序化材质和家具。
+layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。房型优先使用显式
+`roomType`，缺失时按受控中英文名称分类。返回 `ready`、`partial` 或 `fallback`，包含全部
+候选房间、已布置/未布置房间、带 `roomId`/`assetId` 的绝对坐标、目录版本以及唯一真实
+模型的移动端字节预算。真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender
+加载失败时按目录声明创建程序化回退并记录数量。
 
 ## 测试
 

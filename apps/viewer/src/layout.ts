@@ -3,6 +3,7 @@ import type { StylePlacement } from './style-pack'
 export interface LayoutRoom {
   id: string
   name: string
+  roomType: 'living' | 'dining' | 'bedroom' | 'other'
   source: 'zone' | 'slab'
   levelId: string | null
   polygon: Array<[number, number]>
@@ -15,15 +16,21 @@ export interface LayoutPlacement extends StylePlacement {
 }
 
 export interface LayoutManifest {
-  schemaVersion: '1.0'
+  schemaVersion: '2.0'
   layoutId: string
-  pipelineVersion: 'room-aware-layout-v1'
+  pipelineVersion: 'multiroom-asset-layout-v2'
   projectId: string
   sceneRevision: number
   style: { id: string; version: number }
-  status: 'ready' | 'fallback'
-  fallbackReason: 'no-room-polygon' | 'no-room-fits' | null
+  assetCatalog: { id: string; version: number }
+  status: 'ready' | 'partial' | 'fallback'
+  fallbackReason: 'no-room-polygon' | 'no-supported-room' | 'no-room-fits' | null
   selectedRoomId: string | null
+  furnishedRoomIds: string[]
+  unfurnishedRoomIds: string[]
+  referencedAssetBytes: number
+  mobileAssetBudgetBytes: number
+  mobileAssetBudgetExceeded: boolean
   wallClearance: number
   itemClearance: number
   rooms: LayoutRoom[]
@@ -48,16 +55,26 @@ function parseVector(value: unknown, length: 2 | 3): number[] {
 export function parseLayoutManifest(value: unknown): LayoutManifest {
   if (
     !isRecord(value) ||
-    value.schemaVersion !== '1.0' ||
+    value.schemaVersion !== '2.0' ||
     typeof value.layoutId !== 'string' ||
     !/^[0-9a-f]{64}$/.test(value.layoutId) ||
-    value.pipelineVersion !== 'room-aware-layout-v1' ||
+    value.pipelineVersion !== 'multiroom-asset-layout-v2' ||
     typeof value.projectId !== 'string' ||
     !Number.isInteger(value.sceneRevision) ||
     !isRecord(value.style) ||
     typeof value.style.id !== 'string' ||
     !Number.isInteger(value.style.version) ||
-    !(value.status === 'ready' || value.status === 'fallback') ||
+    !isRecord(value.assetCatalog) ||
+    typeof value.assetCatalog.id !== 'string' ||
+    !Number.isInteger(value.assetCatalog.version) ||
+    !(value.status === 'ready' || value.status === 'partial' || value.status === 'fallback') ||
+    !Array.isArray(value.furnishedRoomIds) ||
+    !value.furnishedRoomIds.every((entry) => typeof entry === 'string') ||
+    !Array.isArray(value.unfurnishedRoomIds) ||
+    !value.unfurnishedRoomIds.every((entry) => typeof entry === 'string') ||
+    !isNumber(value.referencedAssetBytes) ||
+    !isNumber(value.mobileAssetBudgetBytes) ||
+    typeof value.mobileAssetBudgetExceeded !== 'boolean' ||
     !isNumber(value.wallClearance) ||
     !isNumber(value.itemClearance) ||
     !Array.isArray(value.rooms) ||
@@ -71,6 +88,10 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
       !isRecord(room) ||
       typeof room.id !== 'string' ||
       typeof room.name !== 'string' ||
+      !(room.roomType === 'living' ||
+        room.roomType === 'dining' ||
+        room.roomType === 'bedroom' ||
+        room.roomType === 'other') ||
       !(room.source === 'zone' || room.source === 'slab') ||
       !(room.levelId === null || typeof room.levelId === 'string') ||
       !isNumber(room.area) ||
@@ -110,7 +131,10 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
     } as LayoutPlacement
   })
 
-  if (value.status === 'ready' && (typeof value.selectedRoomId !== 'string' || placements.length === 0)) {
+  if (
+    (value.status === 'ready' || value.status === 'partial') &&
+    (typeof value.selectedRoomId !== 'string' || placements.length === 0)
+  ) {
     throw new Error('自动布局缺少选定房间或陈设')
   }
   if (value.status === 'fallback' && placements.length !== 0) {

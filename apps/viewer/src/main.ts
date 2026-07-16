@@ -12,6 +12,7 @@ import { Scene } from '@babylonjs/core/scene'
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import meshoptDecoderSource from '../node_modules/meshoptimizer/meshopt_decoder.cjs?raw'
+import { parseAssetCatalog, type AssetCatalog, type CatalogAsset } from './asset-catalog'
 import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
 import { parseStylePack, type StylePack } from './style-pack'
@@ -115,6 +116,7 @@ sun.intensity = 1.8
 sun.diffuse = new Color3(1, 0.9, 0.72)
 
 let container: AssetContainer | null = null
+let styledAssetContainers: AssetContainer[] = []
 let styledMeshes: AbstractMesh[] = []
 let styledMaterials: PBRMaterial[] = []
 let defaultTarget = Vector3.Zero()
@@ -149,24 +151,32 @@ function setError(error: unknown): void {
   errorMessage.textContent = error instanceof Error ? error.message : '发生未知错误'
 }
 
-function setReady(manifest: ArtifactManifest, style: StylePack, layout: LayoutManifest): void {
+function setReady(
+  manifest: ArtifactManifest,
+  style: StylePack,
+  layout: LayoutManifest,
+  assetStats: { models: number; fallbacks: number },
+): void {
   shell.dataset.state = 'ready'
   statusPanel.hidden = true
   errorPanel.hidden = true
   projectName.textContent = manifest.projectId
   revision.textContent = `Revision ${manifest.sceneRevision}`
   styleName.textContent = `${style.name} v${style.version}`
-  const selectedRoom = layout.rooms.find((room) => room.id === layout.selectedRoomId)
-  layoutStatus.textContent = selectedRoom
-    ? `已布置 · ${selectedRoom.name}`
+  layoutStatus.textContent = layout.furnishedRoomIds.length
+    ? layout.unfurnishedRoomIds.length
+      ? `已布置 ${layout.furnishedRoomIds.length} · 待处理 ${layout.unfurnishedRoomIds.length}`
+      : `已布置 · ${layout.furnishedRoomIds.length} 个房间`
     : layout.fallbackReason === 'no-room-fits'
       ? '房间尺寸不足'
-      : '待补房间边界'
+      : layout.fallbackReason === 'no-supported-room'
+        ? '暂无支持的房间类型'
+        : '待补房间边界'
   if (!manifest.optimized) return
   size.textContent = formatBytes(manifest.optimized.bytes)
   const modelStats = manifest.optimized.statistics
   stats.innerHTML = modelStats
-    ? `<span><strong>${modelStats.meshes}</strong> 网格</span><span><strong>${modelStats.materials}</strong> 材质</span>`
+    ? `<span><strong>${modelStats.meshes}</strong> 网格</span><span><strong>${modelStats.materials}</strong> 材质</span><span><strong>${assetStats.models}</strong> 真实家具</span><span><strong>${assetStats.fallbacks}</strong> 回退</span>`
     : ''
   if (manifest.mobileBudgetExceeded) size.textContent += ' · 大模型'
 }
@@ -176,19 +186,20 @@ function frameModel(layout: LayoutManifest): void {
   if (visibleMeshes.length === 0) throw new Error('模型中没有可显示的几何体')
   const bounds = scene.getWorldExtends((mesh) => visibleMeshes.includes(mesh))
   const extent = bounds.max.subtract(bounds.min)
-  const selectedRoom = layout.rooms.find((room) => room.id === layout.selectedRoomId)
-  if (selectedRoom) {
-    const roomX = selectedRoom.polygon.map((point) => point[0])
-    const roomZ = selectedRoom.polygon.map((point) => point[1])
+  const furnishedRooms = layout.rooms.filter((room) => layout.furnishedRoomIds.includes(room.id))
+  if (furnishedRooms.length > 0) {
+    const roomX = furnishedRooms.flatMap((room) => room.polygon.map((point) => point[0]))
+    const roomZ = furnishedRooms.flatMap((room) => room.polygon.map((point) => point[1]))
     defaultTarget = new Vector3(
-      selectedRoom.centroid[0],
+      (Math.min(...roomX) + Math.max(...roomX)) / 2,
       bounds.min.y + Math.max(0.7, extent.y * 0.42),
-      selectedRoom.centroid[1],
+      (Math.min(...roomZ) + Math.max(...roomZ)) / 2,
     )
+    const frameFactor = furnishedRooms.length > 1 ? 1.22 : 0.72
     baseRadius = Math.max(
       4,
       Math.hypot(Math.max(...roomX) - Math.min(...roomX), Math.max(...roomZ) - Math.min(...roomZ)) *
-        0.72,
+        frameFactor,
     )
   } else {
     defaultTarget = bounds.min.add(extent.scale(0.5))
@@ -211,10 +222,12 @@ function color3(value: string): Color3 {
 }
 
 function clearStyle(): void {
+  for (const assetContainer of styledAssetContainers) assetContainer.dispose()
   for (const mesh of styledMeshes) mesh.dispose(false, false)
   for (const material of styledMaterials) material.dispose()
   styledMeshes = []
   styledMaterials = []
+  styledAssetContainers = []
 }
 
 function modelBounds(meshes: AbstractMesh[]): { minimum: Vector3; maximum: Vector3 } {
@@ -224,7 +237,66 @@ function modelBounds(meshes: AbstractMesh[]): { minimum: Vector3; maximum: Vecto
   return { minimum: bounds.min, maximum: bounds.max }
 }
 
-function applyStyle(style: StylePack, layout: LayoutManifest, model: AssetContainer): void {
+function createFallback(
+  placement: LayoutManifest['placements'][number],
+  floorTop: number,
+  material: PBRMaterial,
+): void {
+  const [width, height, depth] = placement.size
+  let mesh: AbstractMesh
+  if (placement.kind === 'box') {
+    mesh = MeshBuilder.CreateBox(`style-${placement.id}`, { width, height, depth }, scene)
+  } else if (placement.kind === 'cylinder') {
+    mesh = MeshBuilder.CreateCylinder(
+      `style-${placement.id}`,
+      { height, diameter: Math.max(width, depth), tessellation: 48 },
+      scene,
+    )
+  } else {
+    mesh = MeshBuilder.CreateSphere(`style-${placement.id}`, { segments: 32, diameter: 1 }, scene)
+    mesh.scaling.set(width, height, depth)
+  }
+  mesh.position.set(placement.position[0], floorTop + placement.position[1], placement.position[2])
+  mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
+  mesh.material = material
+  styledMeshes.push(mesh)
+}
+
+async function loadCatalogModel(
+  placement: LayoutManifest['placements'][number],
+  asset: CatalogAsset,
+  floorTop: number,
+): Promise<boolean> {
+  if (asset.kind !== 'model' || !asset.delivery) return false
+  try {
+    const assetContainer = await LoadAssetContainerAsync(apiUrl(asset.delivery.url), scene)
+    const roots = assetContainer.meshes.filter((mesh) => mesh.parent === null)
+    if (roots.length === 0) throw new Error(`资产 ${asset.id} 没有根节点`)
+    const scale = placement.size.map((value, index) => value / asset.canonicalSize[index])
+    for (const rootMesh of roots) {
+      rootMesh.scaling.set(scale[0], scale[1], scale[2])
+      rootMesh.position.set(
+        placement.position[0],
+        floorTop + placement.position[1] - placement.size[1] / 2,
+        placement.position[2],
+      )
+      rootMesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
+    }
+    assetContainer.addAllToScene()
+    styledAssetContainers.push(assetContainer)
+    return true
+  } catch (error) {
+    console.warn(`真实资产 ${asset.id} 加载失败，使用程序化回退`, error)
+    return false
+  }
+}
+
+async function applyStyle(
+  style: StylePack,
+  layout: LayoutManifest,
+  catalog: AssetCatalog,
+  model: AssetContainer,
+): Promise<{ models: number; fallbacks: number }> {
   clearStyle()
   const materials = Object.fromEntries(
     Object.entries(style.materials).map(([role, value]) => {
@@ -257,38 +329,26 @@ function applyStyle(style: StylePack, layout: LayoutManifest, model: AssetContai
   floor.material = materials.floor ?? architecture
   styledMeshes.push(floor)
 
-  for (const placement of layout.placements) {
-    const [width, height, depth] = placement.size
-    let mesh: AbstractMesh
-    if (placement.kind === 'box') {
-      mesh = MeshBuilder.CreateBox(
-        `style-${placement.id}`,
-        { width, height, depth },
-        scene,
+  const assets = new Map(catalog.assets.map((asset) => [asset.id, asset]))
+  let models = 0
+  let fallbacks = 0
+  await Promise.all(
+    layout.placements.map(async (placement) => {
+      const asset = assets.get(placement.assetId)
+      if (!asset) throw new Error(`自动布局引用了不存在的资产：${placement.assetId}`)
+      const loaded = await loadCatalogModel(placement, asset, bounds.minimum.y)
+      if (loaded) {
+        models += 1
+        return
+      }
+      createFallback(
+        placement,
+        bounds.minimum.y,
+        materials[placement.role] ?? materials[asset.fallback.materialRole] ?? architecture,
       )
-    } else if (placement.kind === 'cylinder') {
-      mesh = MeshBuilder.CreateCylinder(
-        `style-${placement.id}`,
-        { height, diameter: Math.max(width, depth), tessellation: 48 },
-        scene,
-      )
-    } else {
-      mesh = MeshBuilder.CreateSphere(
-        `style-${placement.id}`,
-        { segments: 32, diameter: 1 },
-        scene,
-      )
-      mesh.scaling.set(width, height, depth)
-    }
-    mesh.position.set(
-      placement.position[0],
-      bounds.minimum.y + placement.position[1],
-      placement.position[2],
-    )
-    mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
-    mesh.material = materials[placement.role] ?? architecture
-    styledMeshes.push(mesh)
-  }
+      if (asset.kind === 'model') fallbacks += 1
+    }),
+  )
 
   scene.clearColor = Color4.FromColor3(color3(style.environment.backgroundColor), 1)
   skyLight.diffuse = color3(style.environment.ambientColor)
@@ -297,8 +357,17 @@ function applyStyle(style: StylePack, layout: LayoutManifest, model: AssetContai
   sun.intensity = style.environment.sunIntensity * 0.55
   sun.direction = Vector3.FromArray(style.environment.sunDirection)
   perspectiveAlpha = (style.camera.alphaDegrees * Math.PI) / 180
-  perspectiveBeta = (style.camera.betaDegrees * Math.PI) / 180
+  const betaDegrees =
+    layout.furnishedRoomIds.length > 1 ? Math.min(style.camera.betaDegrees, 42) : style.camera.betaDegrees
+  perspectiveBeta = (betaDegrees * Math.PI) / 180
   radiusMultiplier = style.camera.radiusMultiplier
+  return { models, fallbacks }
+}
+
+async function getAssetCatalog(): Promise<AssetCatalog> {
+  const response = await fetch(apiUrl('/api/asset-catalog'), { cache: 'no-store' })
+  if (!response.ok) throw new Error(`资产目录服务请求失败（${response.status}）`)
+  return parseAssetCatalog(await response.json())
 }
 
 async function getStylePack(): Promise<StylePack> {
@@ -351,10 +420,11 @@ async function loadModel(): Promise<void> {
       throw new Error('链接包含无效的 style 参数')
     }
     setStatus('正在读取模型', '检查最新发布版本…', 4)
-    const [manifest, style, layout] = await Promise.all([
+    const [manifest, style, layout, catalog] = await Promise.all([
       waitUntilReady(),
       getStylePack(),
       getLayoutManifest(),
+      getAssetCatalog(),
     ])
     if (!manifest.optimized) throw new Error('模型产物尚未准备完成')
     if (
@@ -362,6 +432,8 @@ async function loadModel(): Promise<void> {
       layout.sceneRevision !== manifest.sceneRevision ||
       layout.style.id !== style.id ||
       layout.style.version !== style.version
+      || layout.assetCatalog.id !== catalog.id
+      || layout.assetCatalog.version !== catalog.version
     ) {
       throw new Error('模型、风格与自动布局版本不一致')
     }
@@ -380,11 +452,11 @@ async function loadModel(): Promise<void> {
       },
     })
     container.addAllToScene()
-    applyStyle(style, layout, container)
+    const assetStats = await applyStyle(style, layout, catalog, container)
     frameModel(layout)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
-    setReady(manifest, style, layout)
+    setReady(manifest, style, layout, assetStats)
   } catch (error) {
     setError(error)
   }

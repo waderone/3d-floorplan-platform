@@ -1,0 +1,9 @@
+Furniture Kit
+
+Created and distributed by Kenney (https://kenney.nl).
+
+License: Creative Commons Zero v1.0 Universal (CC0-1.0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The official package states that this content is free to use in personal, educational, and
+commercial projects. Credit is appreciated but not mandatory.

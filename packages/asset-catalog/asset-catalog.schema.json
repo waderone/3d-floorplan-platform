@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3d-floorplan.local/schemas/asset-catalog-1.0.json",
+  "title": "3D Floorplan Asset Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "version", "mobileBudgetBytes", "sourcePackage", "assets", "roomRecipes"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "id": {"$ref": "#/$defs/id"},
+    "version": {"type": "integer", "minimum": 1},
+    "mobileBudgetBytes": {"type": "integer", "minimum": 1},
+    "sourcePackage": {"$ref": "#/$defs/sourcePackage"},
+    "assets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/asset"}},
+    "roomRecipes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["living", "dining", "bedroom"],
+      "properties": {
+        "living": {"$ref": "#/$defs/recipe"},
+        "dining": {"$ref": "#/$defs/recipe"},
+        "bedroom": {"$ref": "#/$defs/recipe"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "positiveVector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "number", "exclusiveMinimum": 0}
+      ]
+    },
+    "vector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}]
+    },
+    "sourcePackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "siteVersion", "embeddedVersion", "author", "sourceUrl", "downloadUrl", "sha256", "license"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "siteVersion": {"type": "string", "minLength": 1},
+        "embeddedVersion": {"type": "string", "minLength": 1},
+        "author": {"type": "string", "minLength": 1},
+        "sourceUrl": {"type": "string", "format": "uri"},
+        "downloadUrl": {"type": "string", "format": "uri"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "license": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spdx", "url", "localNotice"],
+          "properties": {
+            "spdx": {"const": "CC0-1.0"},
+            "url": {"type": "string", "format": "uri"},
+            "localNotice": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "materialRole"],
+      "properties": {
+        "kind": {"enum": ["box", "cylinder", "sphere"]},
+        "materialRole": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"}
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256", "bytes"],
+      "properties": {
+        "url": {"type": "string", "pattern": "^/catalog-assets/models/[a-z0-9-]+\\.glb$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 2097152}
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "roomTypes", "canonicalSize", "fallback"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["model", "procedural"]},
+        "roomTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["living", "dining", "bedroom", "other"]}
+        },
+        "sourceEntry": {"type": "string", "minLength": 1},
+        "sourceSha256": {"$ref": "#/$defs/sha256"},
+        "sourceMaterialSha256": {"$ref": "#/$defs/sha256"},
+        "canonicalSize": {"$ref": "#/$defs/positiveVector3"},
+        "delivery": {"$ref": "#/$defs/delivery"},
+        "fallback": {"$ref": "#/$defs/fallback"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "model"}}},
+          "then": {"required": ["sourceEntry", "sourceSha256", "sourceMaterialSha256", "delivery"]},
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["sourceEntry"]},
+                {"required": ["sourceSha256"]},
+                {"required": ["sourceMaterialSha256"]},
+                {"required": ["delivery"]}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "itemId", "assetId", "role", "collisionMode", "position", "rotationYDegrees"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "itemId": {"$ref": "#/$defs/id"},
+        "assetId": {"$ref": "#/$defs/id"},
+        "role": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
+        "collisionMode": {"enum": ["solid", "surface"]},
+        "position": {"$ref": "#/$defs/vector3"},
+        "rotationYDegrees": {"type": "number", "minimum": -360, "maximum": 360}
+      }
+    },
+    "recipe": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/placement"}}
+  }
+}
