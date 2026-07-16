@@ -14,10 +14,11 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from .layouts import LayoutManifest
+from .render_profiles import RenderProfile
 from .styles import StylePack
 
 
-RENDER_PIPELINE_VERSION = "blender-5x-multiroom-assets-v6"
+RENDER_PIPELINE_VERSION = "blender-5x-quality-profiles-v7"
 MAX_RENDER_BYTES = 50 * 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -39,6 +40,16 @@ class RenderImageMetadata(BaseModel):
     url: str
 
 
+class RenderViewMetadata(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    id: str
+    name: str
+    room_type: Literal["living", "dining", "bedroom"] | None = Field(alias="roomType")
+    output: RenderImageMetadata
+    render_seconds: float = Field(alias="renderSeconds", ge=0)
+
+
 class RenderManifest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -50,9 +61,12 @@ class RenderManifest(BaseModel):
     pipeline_version: str = Field(alias="pipelineVersion")
     style: StyleReference
     asset_catalog: StyleReference = Field(alias="assetCatalog")
+    profile: StyleReference
     status: Literal["processing", "ready", "failed"]
     output: RenderImageMetadata | None = None
+    views: list[RenderViewMetadata] = Field(default_factory=list)
     engine: str | None = None
+    device: str | None = None
     blender_version: str | None = Field(alias="blenderVersion", default=None)
     render_seconds: float | None = Field(alias="renderSeconds", default=None, ge=0)
     real_asset_placements: int | None = Field(alias="realAssetPlacements", default=None, ge=0)
@@ -69,7 +83,9 @@ class RenderBackend(Protocol):
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        output_png: Path,
+        render_profile_catalog_path: Path,
+        profile_id: str,
+        output_directory: Path,
     ) -> dict[str, Any]: ...
 
 
@@ -85,9 +101,11 @@ class BlenderRenderer:
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        output_png: Path,
+        render_profile_catalog_path: Path,
+        profile_id: str,
+        output_directory: Path,
     ) -> dict[str, Any]:
-        report_path = output_png.with_suffix(".report.json")
+        report_path = output_directory / ".render.report.json"
         completed = subprocess.run(
             [
                 self.blender_binary,
@@ -107,8 +125,12 @@ class BlenderRenderer:
                 str(layout_path),
                 "--catalog",
                 str(asset_catalog_path),
-                "--output",
-                str(output_png),
+                "--render-config",
+                str(render_profile_catalog_path),
+                "--profile",
+                profile_id,
+                "--output-directory",
+                str(output_directory),
                 "--report",
                 str(report_path),
             ],
@@ -169,8 +191,8 @@ class RenderStore:
     def layout_path(self, render_id: str) -> Path:
         return self._render_directory(render_id) / "layout.json"
 
-    def _latest_path(self, project_id: str, style_id: str) -> Path:
-        return self.index_directory / f"{project_id}--{style_id}.json"
+    def _latest_path(self, project_id: str, style_id: str, profile_id: str) -> Path:
+        return self.index_directory / f"{project_id}--{style_id}--{profile_id}.json"
 
     def _write_json(self, path: Path, value: dict[str, Any]) -> None:
         temporary = path.with_suffix(f"{path.suffix}.tmp")
@@ -189,8 +211,8 @@ class RenderStore:
             return None
         return RenderManifest.model_validate_json(path.read_text(encoding="utf-8"))
 
-    def load_latest(self, project_id: str, style_id: str) -> RenderManifest | None:
-        path = self._latest_path(project_id, style_id)
+    def load_latest(self, project_id: str, style_id: str, profile_id: str) -> RenderManifest | None:
+        path = self._latest_path(project_id, style_id, profile_id)
         if not path.is_file():
             return None
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -206,10 +228,12 @@ class RenderStore:
         artifact_id: str,
         style: StylePack,
         layout: LayoutManifest,
+        profile_id: str,
+        profile: RenderProfile,
     ) -> tuple[RenderManifest, bool]:
         identity = (
             f"{project_id}:{scene_revision}:{artifact_id}:{layout.layout_id}:{style.id}:{style.version}:"
-            f"{RENDER_PIPELINE_VERSION}"
+            f"{profile_id}:{profile.version}:{RENDER_PIPELINE_VERSION}"
         ).encode()
         render_id = hashlib.sha256(identity).hexdigest()
         with self.lock:
@@ -231,6 +255,7 @@ class RenderStore:
                     id=layout.asset_catalog.id,
                     version=layout.asset_catalog.version,
                 ),
+                profile=StyleReference(id=profile_id, version=profile.version),
                 status="processing",
                 createdAt=existing.created_at if existing else now,
                 updatedAt=now,
@@ -241,7 +266,7 @@ class RenderStore:
                 layout.model_dump(by_alias=True, mode="json"),
             )
             self._write_json(
-                self._latest_path(project_id, style.id),
+                self._latest_path(project_id, style.id, profile_id),
                 {"renderId": render_id},
             )
             return manifest, True
@@ -254,14 +279,16 @@ class RenderStore:
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        style: StylePack,
+        render_profile_catalog_path: Path,
+        profile: RenderProfile,
     ) -> None:
         manifest = self.load(render_id)
         if manifest is None:
             return
         render_directory = self._render_directory(render_id)
-        output_path = render_directory / "image.png"
-        temporary_output = render_directory / ".image.tmp.png"
+        temporary_paths = {
+            view.id: render_directory / f".{view.id}.tmp.png" for view in profile.views
+        }
         try:
             if not source_glb.is_file():
                 raise RuntimeError("optimized GLB is missing")
@@ -270,21 +297,22 @@ class RenderStore:
                 style_path,
                 layout_path,
                 asset_catalog_path,
-                temporary_output,
+                render_profile_catalog_path,
+                manifest.profile.id,
+                render_directory,
             )
-            if not temporary_output.is_file():
-                raise RuntimeError("render worker did not create an output PNG")
-            width, height, size, sha256 = validate_png(temporary_output)
-            if (width, height) != (style.output.width, style.output.height):
-                raise RuntimeError("render output dimensions do not match the style pack")
             engine = report.get("engine")
+            device = report.get("device")
             blender_version = report.get("blenderVersion")
             render_seconds = report.get("renderSeconds")
             real_asset_placements = report.get("realAssetPlacements")
             fallback_placements = report.get("fallbackPlacements")
+            reported_views = report.get("views")
             if (
                 not isinstance(engine, str)
                 or not engine
+                or not isinstance(device, str)
+                or not device
                 or not isinstance(blender_version, str)
                 or not blender_version
                 or not isinstance(render_seconds, (int, float))
@@ -298,20 +326,55 @@ class RenderStore:
                 or fallback_placements < 0
                 or report.get("assetCatalogId") != manifest.asset_catalog.id
                 or report.get("assetCatalogVersion") != manifest.asset_catalog.version
+                or report.get("profileId") != manifest.profile.id
+                or report.get("profileVersion") != manifest.profile.version
+                or not isinstance(reported_views, list)
+                or [entry.get("id") for entry in reported_views if isinstance(entry, dict)]
+                != [view.id for view in profile.views]
             ):
                 raise RuntimeError("render worker returned incomplete metadata")
-            temporary_output.replace(output_path)
+            ready_views: list[RenderViewMetadata] = []
+            for index, (view, reported) in enumerate(zip(profile.views, reported_views, strict=True)):
+                if not isinstance(reported, dict):
+                    raise RuntimeError("render worker returned invalid view metadata")
+                view_seconds = reported.get("renderSeconds")
+                if (
+                    not isinstance(view_seconds, (int, float))
+                    or isinstance(view_seconds, bool)
+                    or view_seconds < 0
+                ):
+                    raise RuntimeError("render worker returned invalid view timing")
+                temporary = temporary_paths[view.id]
+                if not temporary.is_file():
+                    raise RuntimeError(f"render worker did not create view: {view.id}")
+                width, height, size, sha256 = validate_png(temporary)
+                if (width, height) != (profile.width, profile.height):
+                    raise RuntimeError("render output dimensions do not match the profile")
+                filename = "image.png" if index == 0 else f"{view.id}.png"
+                output_path = render_directory / filename
+                temporary.replace(output_path)
+                ready_views.append(
+                    RenderViewMetadata(
+                        id=view.id,
+                        name=view.name,
+                        roomType=view.room_type,
+                        output=RenderImageMetadata(
+                            sha256=sha256,
+                            bytes=size,
+                            width=width,
+                            height=height,
+                            url=f"/renders/{render_id}/{filename}",
+                        ),
+                        renderSeconds=float(view_seconds),
+                    )
+                )
             ready = manifest.model_copy(
                 update={
                     "status": "ready",
-                    "output": RenderImageMetadata(
-                        sha256=sha256,
-                        bytes=size,
-                        width=width,
-                        height=height,
-                        url=f"/renders/{render_id}/image.png",
-                    ),
+                    "output": ready_views[0].output,
+                    "views": ready_views,
                     "engine": engine,
+                    "device": device,
                     "blender_version": blender_version,
                     "render_seconds": float(render_seconds),
                     "real_asset_placements": real_asset_placements,
@@ -323,7 +386,8 @@ class RenderStore:
             with self.lock:
                 self._write_manifest(ready)
         except Exception as error:
-            temporary_output.unlink(missing_ok=True)
+            for path in temporary_paths.values():
+                path.unlink(missing_ok=True)
             failed = manifest.model_copy(
                 update={
                     "status": "failed",

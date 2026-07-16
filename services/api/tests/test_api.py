@@ -55,29 +55,36 @@ class CopyRenderer:
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        output_png: Path,
+        render_profile_catalog_path: Path,
+        profile_id: str,
+        output_directory: Path,
     ) -> dict[str, Any]:
         style = json.loads(style_path.read_text(encoding="utf-8"))
         layout = json.loads(layout_path.read_text(encoding="utf-8"))
         catalog = json.loads(asset_catalog_path.read_text(encoding="utf-8"))
+        render_catalog = json.loads(render_profile_catalog_path.read_text(encoding="utf-8"))
+        profile = render_catalog["profiles"][profile_id]
         assert layout["style"]["id"] == style["id"]
         assert layout["assetCatalog"] == {"id": catalog["id"], "version": catalog["version"]}
-        output = style["output"]
-        png_header = (
-            b"\x89PNG\r\n\x1a\n"
-            + struct.pack(">I", 13)
-            + b"IHDR"
-            + struct.pack(">IIBBBBB", output["width"], output["height"], 8, 2, 0, 0, 0)
+        png_header = b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(
+            ">IIBBBBB", profile["width"], profile["height"], 8, 2, 0, 0, 0
         )
-        output_png.write_bytes(png_header)
+        for view in profile["views"]:
+            (output_directory / f".{view['id']}.tmp.png").write_bytes(png_header)
         model_ids = {asset["id"] for asset in catalog["assets"] if asset["kind"] == "model"}
         real_asset_placements = sum(
             placement["assetId"] in model_ids for placement in layout["placements"]
         )
         return {
-            "engine": "BLENDER_EEVEE",
+            "engine": profile["engine"],
+            "device": "METAL:test" if profile["engine"] == "CYCLES" else "RASTER:test",
             "blenderVersion": "5.2.0 LTS test",
             "renderSeconds": 0.01,
+            "profileId": profile_id,
+            "profileVersion": profile["version"],
+            "views": [
+                {"id": view["id"], "renderSeconds": 0.01} for view in profile["views"]
+            ],
             "assetCatalogId": catalog["id"],
             "assetCatalogVersion": catalog["version"],
             "realAssetPlacements": real_asset_placements,
@@ -92,7 +99,9 @@ class FailingRenderer:
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        output_png: Path,
+        render_profile_catalog_path: Path,
+        profile_id: str,
+        output_directory: Path,
     ) -> dict[str, Any]:
         raise RuntimeError("synthetic render failure")
 
@@ -104,9 +113,19 @@ class IncompleteRenderer(CopyRenderer):
         style_path: Path,
         layout_path: Path,
         asset_catalog_path: Path,
-        output_png: Path,
+        render_profile_catalog_path: Path,
+        profile_id: str,
+        output_directory: Path,
     ) -> dict[str, Any]:
-        super().render(source_glb, style_path, layout_path, asset_catalog_path, output_png)
+        super().render(
+            source_glb,
+            style_path,
+            layout_path,
+            asset_catalog_path,
+            render_profile_catalog_path,
+            profile_id,
+            output_directory,
+        )
         return {}
 
 
@@ -587,6 +606,13 @@ def test_render_requires_ready_artifact_and_known_style(client: TestClient) -> N
     assert unknown_style.status_code == 404
     assert unknown_style.json()["detail"]["code"] == "style_not_found"
 
+    unknown_profile = client.post(
+        "/api/projects/unknown-style/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal", "profileId": "missing"},
+    )
+    assert unknown_profile.status_code == 404
+    assert unknown_profile.json()["detail"]["code"] == "render_profile_not_found"
+
 
 def test_render_is_deterministic_processed_and_served(client: TestClient) -> None:
     artifact = publish_model(client)
@@ -606,13 +632,16 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     layout = client.get("/api/projects/render-model/layout").json()
     assert payload["status"] == "ready"
     assert payload["artifactId"] == artifact["artifactId"]
-    assert payload["pipelineVersion"] == "blender-5x-multiroom-assets-v6"
+    assert payload["pipelineVersion"] == "blender-5x-quality-profiles-v7"
     assert payload["style"] == {"id": "warm-minimal", "version": 2}
     assert len(payload["layoutId"]) == 64
     assert payload["layoutId"] == layout["layoutId"]
     assert payload["output"]["width"] == 1280
     assert payload["output"]["height"] == 720
+    assert payload["profile"] == {"id": "preview", "version": 1}
+    assert [view["id"] for view in payload["views"]] == ["overview"]
     assert payload["engine"] == "BLENDER_EEVEE"
+    assert payload["device"] == "RASTER:test"
     assert payload["blenderVersion"] == "5.2.0 LTS test"
     assert client.get(payload["output"]["url"]).content.startswith(b"\x89PNG")
 
@@ -623,6 +652,38 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     assert duplicate.status_code == 202
     assert duplicate.json()["renderId"] == payload["renderId"]
     assert duplicate.json()["status"] == "ready"
+
+
+def test_quality_render_has_distinct_identity_and_three_views(client: TestClient) -> None:
+    publish_model(client, "quality-render")
+    preview = client.post(
+        "/api/projects/quality-render/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal"},
+    ).json()
+    accepted_quality = client.post(
+        "/api/projects/quality-render/renders",
+        json={"sceneRevision": 1, "styleId": "warm-minimal", "profileId": "quality"},
+    ).json()
+    quality = client.get(
+        "/api/projects/quality-render/renders/latest",
+        params={"styleId": "warm-minimal", "profileId": "quality"},
+    ).json()
+
+    assert accepted_quality["status"] == "processing"
+    assert quality["status"] == "ready"
+    assert quality["renderId"] != preview["renderId"]
+    assert quality["profile"] == {"id": "quality", "version": 1}
+    assert quality["engine"] == "CYCLES"
+    assert quality["device"] == "METAL:test"
+    assert [view["id"] for view in quality["views"]] == ["overview", "living", "bedroom"]
+    assert all(view["output"]["width"] == 1920 for view in quality["views"])
+    assert all(client.get(view["output"]["url"]).status_code == 200 for view in quality["views"])
+
+    latest = client.get(
+        "/api/projects/quality-render/renders/latest",
+        params={"styleId": "warm-minimal", "profileId": "quality"},
+    )
+    assert latest.json()["renderId"] == quality["renderId"]
 
 
 def test_render_failure_is_persisted(tmp_path: Path) -> None:

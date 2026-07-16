@@ -8,6 +8,7 @@
 - 场景图节点引用和资产元数据的最小边界校验；
 - GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
 - 版本化装修风格目录和 Blender 异步效果图状态；
+- EEVEE 预览/Cycles 高清渲染档位与鸟瞰、客厅、卧室多视角清单；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -122,25 +123,31 @@ POST 使用 multipart，字段为 `file`（`model/gltf-binary`）和 `sceneRevis
 ### 风格与效果图
 
 - `GET /api/asset-catalog`
+- `GET /api/render-profiles`
 - `GET /api/styles`
 - `GET /api/styles/{style_id}`
 - `GET /api/projects/{project_id}/layout?styleId=warm-minimal`
 - `POST /api/projects/{project_id}/renders`
-- `GET /api/projects/{project_id}/renders/latest?styleId=warm-minimal`
+- `GET /api/projects/{project_id}/renders/latest?styleId=warm-minimal&profileId=preview`
 
 POST JSON 示例：
 
 ```json
 {
   "sceneRevision": 1,
-  "styleId": "warm-minimal"
+  "styleId": "warm-minimal",
+  "profileId": "quality"
 }
 ```
 
-场景 revision 必须与 ready 的最新 GLB 一致。接口返回 HTTP 202 和 processing manifest；
-后台完成后 latest 变为 ready 或 failed。ready 记录风格 id/version、PNG SHA-256、字节数、
-1280×720 尺寸、Blender 版本、引擎、耗时和 `layoutId`，图片通过
-`/renders/.../image.png` 访问。
+场景 revision 必须与 ready 的最新 GLB 一致。`profileId` 默认为 `preview`：EEVEE
+1280×720 单鸟瞰图；`quality` 使用 Cycles、Metal 优先、1920×1080、adaptive sampling、
+denoise、HDRI 与 PBR 木地板，输出鸟瞰/客厅/卧室三视角。未知档位返回 404。
+
+接口返回 HTTP 202 和 processing manifest；后台完成后 latest 变为 ready 或 failed。
+ready 保留兼容字段 `output`，同时记录 `profile`、`device`、总耗时和 `views[]`。
+每个视角都有独立 PNG URL、SHA-256、字节数、尺寸与渲染耗时；`output` 恒等于
+第一个鸟瞰视角，旧客户仍可继续访问 `/renders/.../image.png`。
 
 layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。房型优先使用显式
 `roomType`，缺失时按受控中英文名称分类。返回 `ready`、`partial` 或 `fallback`，包含全部

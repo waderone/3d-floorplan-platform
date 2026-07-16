@@ -39,6 +39,7 @@ from .renders import (
     RenderManifest,
     RenderStore,
 )
+from .render_profiles import PROFILE_ID_PATTERN, RenderProfileCatalog, RenderProfileManifest
 from .styles import STYLE_ID_RE, StyleCatalog, StylePack, StyleSummary
 
 
@@ -108,6 +109,7 @@ class RenderCreateRequest(BaseModel):
 
     scene_revision: int = Field(alias="sceneRevision", ge=1)
     style_id: str = Field(alias="styleId", pattern=STYLE_ID_RE.pattern)
+    profile_id: str = Field(alias="profileId", default="preview", pattern=PROFILE_ID_PATTERN)
 
 
 class SceneStore:
@@ -185,6 +187,7 @@ def create_app(
     renderer: RenderBackend | None = None,
     style_directory: Path | None = None,
     asset_catalog_path: Path | None = None,
+    render_profile_catalog_path: Path | None = None,
 ) -> FastAPI:
     root = (data_dir or Path(os.getenv("FLOORPLAN_DATA_DIR", "data"))).expanduser().resolve()
     assets_dir = root / "assets"
@@ -195,13 +198,15 @@ def create_app(
     artifact_optimizer = optimizer or NodeGlbOptimizer()
     style_catalog = StyleCatalog(style_directory)
     asset_catalog = AssetCatalog(asset_catalog_path)
+    render_profile_catalog = RenderProfileCatalog(render_profile_catalog_path)
     render_store = RenderStore(root / "renders")
     render_backend = renderer or BlenderRenderer()
 
-    app = FastAPI(title="3D Floorplan API", version="0.5.0")
+    app = FastAPI(title="3D Floorplan API", version="0.6.0")
     app.state.data_dir = root
     app.state.style_catalog = style_catalog
     app.state.asset_catalog = asset_catalog
+    app.state.render_profile_catalog = render_profile_catalog
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -368,6 +373,10 @@ def create_app(
     def get_asset_catalog() -> AssetCatalogManifest:
         return asset_catalog.manifest
 
+    @app.get("/api/render-profiles", response_model=RenderProfileManifest)
+    def get_render_profiles() -> RenderProfileManifest:
+        return render_profile_catalog.manifest
+
     @app.get(
         "/api/projects/{project_id}/layout",
         response_model=LayoutManifest,
@@ -420,6 +429,12 @@ def create_app(
                 status_code=404,
                 detail={"code": "style_not_found", "styleId": request.style_id},
             )
+        profile = render_profile_catalog.get(request.profile_id)
+        if profile is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "render_profile_not_found", "profileId": request.profile_id},
+            )
         artifact = artifact_store.load_latest(project_id)
         if (
             artifact is None
@@ -440,6 +455,8 @@ def create_app(
             artifact.artifact_id,
             style,
             generate_layout(project_id, scene.revision, scene.scene.nodes, style, asset_catalog),
+            request.profile_id,
+            profile,
         )
         if should_process:
             background_tasks.add_task(
@@ -450,7 +467,8 @@ def create_app(
                 style_catalog.path_for(style.id),
                 render_store.layout_path(manifest.render_id),
                 asset_catalog.manifest_path,
-                style,
+                render_profile_catalog.manifest_path,
+                profile,
             )
         return manifest
 
@@ -461,8 +479,9 @@ def create_app(
     def get_latest_render(
         project_id: ProjectId,
         style_id: Annotated[str, Query(alias="styleId", pattern=STYLE_ID_RE.pattern)] = "warm-minimal",
+        profile_id: Annotated[str, Query(alias="profileId", pattern=PROFILE_ID_PATTERN)] = "preview",
     ) -> RenderManifest:
-        manifest = render_store.load_latest(project_id, style_id)
+        manifest = render_store.load_latest(project_id, style_id, profile_id)
         if manifest is None:
             raise HTTPException(
                 status_code=404,
@@ -470,6 +489,7 @@ def create_app(
                     "code": "render_not_found",
                     "projectId": project_id,
                     "styleId": style_id,
+                    "profileId": profile_id,
                 },
             )
         return manifest

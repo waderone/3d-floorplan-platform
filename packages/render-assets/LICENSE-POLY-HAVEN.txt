@@ -1,0 +1,11 @@
+Poly Haven fixed render asset snapshot
+
+Environment: Lebombo by Greg Zaal
+Material: Wood Floor by Dimitrios Savva
+Source: https://polyhaven.com/
+
+License: Creative Commons Zero v1.0 Universal (CC0-1.0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The asset files are public-domain snapshots. Poly Haven website content and live API access
+remain subject to their separate terms; this project does not depend on the live API.
