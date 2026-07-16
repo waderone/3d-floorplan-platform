@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.1",
+  "id": "nordic-light",
+  "version": 1,
+  "name": "北欧浅色",
+  "description": "雾白墙面、白蜡木、浅灰织物与柔和鼠尾草绿组成的明亮北欧风格。",
+  "license": { "spdx": "LicenseRef-Project-Authored", "source": "project-authored" },
+  "materials": {
+    "architecture": { "baseColor": "#F4F2EC", "metallic": 0, "roughness": 0.86 },
+    "floor": { "baseColor": "#C6A77D", "metallic": 0, "roughness": 0.7 },
+    "fabric": { "baseColor": "#D4D5D1", "metallic": 0, "roughness": 0.96 },
+    "wood": { "baseColor": "#B98958", "metallic": 0, "roughness": 0.62 },
+    "accent": { "baseColor": "#8FA08B", "metallic": 0, "roughness": 0.82 },
+    "greenery": { "baseColor": "#70866C", "metallic": 0, "roughness": 0.84 },
+    "metal": { "baseColor": "#E6E1D8", "metallic": 0.35, "roughness": 0.42 },
+    "ceramic": { "baseColor": "#E9E2D7", "metallic": 0, "roughness": 0.5 }
+  },
+  "environment": {
+    "backgroundColor": "#E9EBE7",
+    "ambientColor": "#FFF8E9",
+    "ambientIntensity": 1.3,
+    "sunColor": "#FFE2B8",
+    "sunIntensity": 2.2,
+    "sunDirection": [-0.5, -1, 0.3]
+  },
+  "camera": { "alphaDegrees": -45, "betaDegrees": 60, "radiusMultiplier": 1.08 },
+  "output": { "width": 1280, "height": 720, "samples": 64 },
+  "assets": [{
+    "id": "procedural-core-v1",
+    "kind": "procedural",
+    "source": "project-authored",
+    "license": { "spdx": "LicenseRef-Project-Authored", "source": "project-authored" }
+  }],
+  "layout": {
+    "floorPadding": 1.5,
+    "wallClearance": 0.35,
+    "itemClearance": 0.2,
+    "placements": [
+      { "id": "rug", "itemId": "rug", "assetId": "procedural-core-v1", "kind": "box", "role": "accent", "collisionMode": "surface", "position": [0, 0.035, -0.05], "size": [3.1, 0.07, 2.1], "rotationYDegrees": 0 },
+      { "id": "sofa-seat", "itemId": "sofa", "assetId": "procedural-core-v1", "kind": "box", "role": "fabric", "collisionMode": "solid", "position": [0, 0.44, 1], "size": [2.5, 0.66, 0.88], "rotationYDegrees": 0 },
+      { "id": "sofa-back", "itemId": "sofa", "assetId": "procedural-core-v1", "kind": "box", "role": "fabric", "collisionMode": "solid", "position": [0, 0.94, 1.35], "size": [2.5, 0.82, 0.16], "rotationYDegrees": 0 },
+      { "id": "table-top", "itemId": "coffee-table", "assetId": "procedural-core-v1", "kind": "cylinder", "role": "wood", "collisionMode": "solid", "position": [0, 0.45, -0.45], "size": [1.1, 0.1, 1.1], "rotationYDegrees": 0 },
+      { "id": "table-leg", "itemId": "coffee-table", "assetId": "procedural-core-v1", "kind": "cylinder", "role": "wood", "collisionMode": "solid", "position": [0, 0.23, -0.45], "size": [0.25, 0.42, 0.25], "rotationYDegrees": 0 },
+      { "id": "sideboard", "itemId": "sideboard", "assetId": "procedural-core-v1", "kind": "box", "role": "wood", "collisionMode": "solid", "position": [-2.25, 0.5, 1.15], "size": [1.35, 0.82, 0.42], "rotationYDegrees": 0 },
+      { "id": "plant-pot", "itemId": "plant", "assetId": "procedural-core-v1", "kind": "cylinder", "role": "ceramic", "collisionMode": "solid", "position": [2.1, 0.28, 1.1], "size": [0.48, 0.56, 0.48], "rotationYDegrees": 0 },
+      { "id": "plant-crown", "itemId": "plant", "assetId": "procedural-core-v1", "kind": "sphere", "role": "greenery", "collisionMode": "solid", "position": [2.1, 1.05, 1.1], "size": [0.88, 1.4, 0.88], "rotationYDegrees": 0 }
+    ]
+  }
+}

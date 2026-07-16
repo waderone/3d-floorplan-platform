@@ -31,6 +31,7 @@ from .artifacts import (
     NodeGlbOptimizer,
     validate_glb,
 )
+from .layouts import LayoutManifest, generate_layout
 from .renders import (
     BlenderRenderer,
     RenderBackend,
@@ -194,7 +195,7 @@ def create_app(
     render_store = RenderStore(root / "renders")
     render_backend = renderer or BlenderRenderer()
 
-    app = FastAPI(title="3D Floorplan API", version="0.3.0")
+    app = FastAPI(title="3D Floorplan API", version="0.4.0")
     app.state.data_dir = root
     app.state.style_catalog = style_catalog
     app.add_middleware(
@@ -354,6 +355,28 @@ def create_app(
             )
         return style
 
+    @app.get(
+        "/api/projects/{project_id}/layout",
+        response_model=LayoutManifest,
+    )
+    def get_project_layout(
+        project_id: ProjectId,
+        style_id: Annotated[str, Query(alias="styleId", pattern=STYLE_ID_RE.pattern)] = "warm-minimal",
+    ) -> LayoutManifest:
+        scene = store.load(project_id)
+        if scene is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "scene_not_found", "projectId": project_id},
+            )
+        style = style_catalog.get(style_id)
+        if style is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "style_not_found", "styleId": style_id},
+            )
+        return generate_layout(project_id, scene.revision, scene.scene.nodes, style)
+
     @app.post(
         "/api/projects/{project_id}/renders",
         response_model=RenderManifest,
@@ -403,6 +426,7 @@ def create_app(
             request.scene_revision,
             artifact.artifact_id,
             style,
+            generate_layout(project_id, scene.revision, scene.scene.nodes, style),
         )
         if should_process:
             background_tasks.add_task(
@@ -411,6 +435,7 @@ def create_app(
                 render_backend,
                 artifact_store.directory / artifact.artifact_id / "optimized.glb",
                 style_catalog.path_for(style.id),
+                render_store.layout_path(manifest.render_id),
                 style,
             )
         return manifest

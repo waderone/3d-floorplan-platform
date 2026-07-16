@@ -27,10 +27,15 @@ def test_canonical_style_pack_is_valid_and_catalogued() -> None:
     catalog = StyleCatalog(STYLE_PATH.parent)
 
     assert style.id == "warm-minimal"
-    assert style.version == 1
+    assert style.version == 2
     assert len(style.layout.placements) == 11
     assert catalog.get("warm-minimal") == style
     assert catalog.get("../warm-minimal") is None
+    assert [summary.id for summary in catalog.list()] == [
+        "modern-contrast",
+        "nordic-light",
+        "warm-minimal",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -41,10 +46,20 @@ def test_canonical_style_pack_is_valid_and_catalogued() -> None:
         lambda value: value["layout"]["placements"][0].update(role="unknown"),
         lambda value: value["layout"]["placements"][0].update(assetId="missing"),
         lambda value: value["layout"]["placements"][0].update(size=[1, 0, 1]),
+        lambda value: value["layout"]["placements"][0].update(collisionMode="unknown"),
     ],
 )
 def test_style_pack_rejects_invalid_contract(mutate: object) -> None:
     value = style_payload()
     mutate(value)
     with pytest.raises(ValidationError):
+        StylePack.model_validate(value)
+
+
+def test_style_pack_requires_a_solid_furniture_item() -> None:
+    value = style_payload()
+    for placement in value["layout"]["placements"]:
+        placement["collisionMode"] = "surface"
+
+    with pytest.raises(ValidationError, match="at least one solid"):
         StylePack.model_validate(value)

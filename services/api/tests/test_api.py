@@ -49,8 +49,16 @@ class FailingOptimizer:
 
 
 class CopyRenderer:
-    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+    def render(
+        self,
+        source_glb: Path,
+        style_path: Path,
+        layout_path: Path,
+        output_png: Path,
+    ) -> dict[str, Any]:
         style = json.loads(style_path.read_text(encoding="utf-8"))
+        layout = json.loads(layout_path.read_text(encoding="utf-8"))
+        assert layout["style"]["id"] == style["id"]
         output = style["output"]
         png_header = (
             b"\x89PNG\r\n\x1a\n"
@@ -67,13 +75,25 @@ class CopyRenderer:
 
 
 class FailingRenderer:
-    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+    def render(
+        self,
+        source_glb: Path,
+        style_path: Path,
+        layout_path: Path,
+        output_png: Path,
+    ) -> dict[str, Any]:
         raise RuntimeError("synthetic render failure")
 
 
 class IncompleteRenderer(CopyRenderer):
-    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
-        super().render(source_glb, style_path, output_png)
+    def render(
+        self,
+        source_glb: Path,
+        style_path: Path,
+        layout_path: Path,
+        output_png: Path,
+    ) -> dict[str, Any]:
+        super().render(source_glb, style_path, layout_path, output_png)
         return {}
 
 
@@ -479,19 +499,49 @@ def test_style_catalog_is_listed_and_served(client: TestClient) -> None:
     style = client.get("/api/styles/warm-minimal")
 
     assert styles.status_code == 200
-    assert styles.json() == [
-        {
-            "id": "warm-minimal",
-            "version": 1,
-            "name": "暖木极简",
-            "description": "暖白墙面、浅木地板、低饱和布艺和柔和日光组成的首套程序化验证风格。",
-        }
+    assert [value["id"] for value in styles.json()] == [
+        "modern-contrast",
+        "nordic-light",
+        "warm-minimal",
     ]
     assert style.status_code == 200
-    assert style.json()["schemaVersion"] == "1.0"
+    assert style.json()["schemaVersion"] == "1.1"
+    assert style.json()["version"] == 2
     assert style.json()["materials"]["architecture"]["baseColor"] == "#F3EADF"
     assert style.json()["assets"][0]["source"] == "project-authored"
     assert client.get("/api/styles/missing-style").status_code == 404
+
+
+def test_project_layout_exposes_ready_and_fallback_states(client: TestClient) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "room-layout-scene.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert client.put(
+        "/api/projects/room-layout/scene",
+        json=scene_payload(scene=fixture["scene"]),
+    ).status_code == 201
+    ready = client.get(
+        "/api/projects/room-layout/layout",
+        params={"styleId": "modern-contrast"},
+    )
+
+    assert ready.status_code == 200
+    assert ready.json()["status"] == "ready"
+    assert ready.json()["selectedRoomId"] == "zone_living"
+    assert ready.json()["style"] == {"id": "modern-contrast", "version": 1}
+    assert ready.json()["placements"][0]["roomId"] == "zone_living"
+
+    assert client.put(
+        "/api/projects/no-layout/scene",
+        json=scene_payload(),
+    ).status_code == 201
+    fallback = client.get("/api/projects/no-layout/layout")
+    assert fallback.status_code == 200
+    assert fallback.json()["status"] == "fallback"
+    assert fallback.json()["fallbackReason"] == "no-room-polygon"
+    assert fallback.json()["placements"] == []
 
 
 def publish_model(client: TestClient, project_id: str = "render-model") -> dict[str, Any]:
@@ -540,10 +590,13 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     )
     assert latest.status_code == 200
     payload = latest.json()
+    layout = client.get("/api/projects/render-model/layout").json()
     assert payload["status"] == "ready"
     assert payload["artifactId"] == artifact["artifactId"]
-    assert payload["pipelineVersion"] == "blender-5x-style-v1"
-    assert payload["style"] == {"id": "warm-minimal", "version": 1}
+    assert payload["pipelineVersion"] == "blender-5x-style-layout-v2"
+    assert payload["style"] == {"id": "warm-minimal", "version": 2}
+    assert len(payload["layoutId"]) == 64
+    assert payload["layoutId"] == layout["layoutId"]
     assert payload["output"]["width"] == 1280
     assert payload["output"]["height"] == 720
     assert payload["engine"] == "BLENDER_EEVEE"

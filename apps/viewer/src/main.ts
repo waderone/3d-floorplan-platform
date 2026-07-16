@@ -12,6 +12,7 @@ import { Scene } from '@babylonjs/core/scene'
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import meshoptDecoderSource from '../node_modules/meshoptimizer/meshopt_decoder.cjs?raw'
+import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
 import { parseStylePack, type StylePack } from './style-pack'
 import './style.css'
@@ -34,7 +35,7 @@ root.innerHTML = `
       <span class="eyebrow">LIVE MODEL</span>
       <h1 id="project-name">3D 户型</h1>
       <div class="model-meta">
-        <span id="revision">Revision —</span><span id="size">—</span><span id="style-name">Style —</span>
+        <span id="revision">Revision —</span><span id="size">—</span><span id="style-name">Style —</span><span id="layout-status">布局 —</span>
       </div>
       <div class="model-stats" id="stats"></div>
     </aside>
@@ -76,6 +77,7 @@ const revision = element<HTMLElement>('#revision')
 const size = element<HTMLElement>('#size')
 const stats = element<HTMLElement>('#stats')
 const styleName = element<HTMLElement>('#style-name')
+const layoutStatus = element<HTMLElement>('#layout-status')
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
@@ -147,13 +149,19 @@ function setError(error: unknown): void {
   errorMessage.textContent = error instanceof Error ? error.message : '发生未知错误'
 }
 
-function setReady(manifest: ArtifactManifest, style: StylePack): void {
+function setReady(manifest: ArtifactManifest, style: StylePack, layout: LayoutManifest): void {
   shell.dataset.state = 'ready'
   statusPanel.hidden = true
   errorPanel.hidden = true
   projectName.textContent = manifest.projectId
   revision.textContent = `Revision ${manifest.sceneRevision}`
   styleName.textContent = `${style.name} v${style.version}`
+  const selectedRoom = layout.rooms.find((room) => room.id === layout.selectedRoomId)
+  layoutStatus.textContent = selectedRoom
+    ? `已布置 · ${selectedRoom.name}`
+    : layout.fallbackReason === 'no-room-fits'
+      ? '房间尺寸不足'
+      : '待补房间边界'
   if (!manifest.optimized) return
   size.textContent = formatBytes(manifest.optimized.bytes)
   const modelStats = manifest.optimized.statistics
@@ -163,13 +171,29 @@ function setReady(manifest: ArtifactManifest, style: StylePack): void {
   if (manifest.mobileBudgetExceeded) size.textContent += ' · 大模型'
 }
 
-function frameModel(): void {
+function frameModel(layout: LayoutManifest): void {
   const visibleMeshes = scene.meshes.filter((mesh) => mesh.isVisible && mesh.getTotalVertices() > 0)
   if (visibleMeshes.length === 0) throw new Error('模型中没有可显示的几何体')
   const bounds = scene.getWorldExtends((mesh) => visibleMeshes.includes(mesh))
   const extent = bounds.max.subtract(bounds.min)
-  defaultTarget = bounds.min.add(extent.scale(0.5))
-  baseRadius = Math.max(2, extent.length() * 0.85)
+  const selectedRoom = layout.rooms.find((room) => room.id === layout.selectedRoomId)
+  if (selectedRoom) {
+    const roomX = selectedRoom.polygon.map((point) => point[0])
+    const roomZ = selectedRoom.polygon.map((point) => point[1])
+    defaultTarget = new Vector3(
+      selectedRoom.centroid[0],
+      bounds.min.y + Math.max(0.7, extent.y * 0.42),
+      selectedRoom.centroid[1],
+    )
+    baseRadius = Math.max(
+      4,
+      Math.hypot(Math.max(...roomX) - Math.min(...roomX), Math.max(...roomZ) - Math.min(...roomZ)) *
+        0.72,
+    )
+  } else {
+    defaultTarget = bounds.min.add(extent.scale(0.5))
+    baseRadius = Math.max(2, extent.length() * 0.85)
+  }
   defaultRadius = radiusForViewport()
   camera.setTarget(defaultTarget)
   camera.radius = defaultRadius
@@ -200,7 +224,7 @@ function modelBounds(meshes: AbstractMesh[]): { minimum: Vector3; maximum: Vecto
   return { minimum: bounds.min, maximum: bounds.max }
 }
 
-function applyStyle(style: StylePack, model: AssetContainer): void {
+function applyStyle(style: StylePack, layout: LayoutManifest, model: AssetContainer): void {
   clearStyle()
   const materials = Object.fromEntries(
     Object.entries(style.materials).map(([role, value]) => {
@@ -233,7 +257,7 @@ function applyStyle(style: StylePack, model: AssetContainer): void {
   floor.material = materials.floor ?? architecture
   styledMeshes.push(floor)
 
-  for (const placement of style.layout.placements) {
+  for (const placement of layout.placements) {
     const [width, height, depth] = placement.size
     let mesh: AbstractMesh
     if (placement.kind === 'box') {
@@ -257,9 +281,9 @@ function applyStyle(style: StylePack, model: AssetContainer): void {
       mesh.scaling.set(width, height, depth)
     }
     mesh.position.set(
-      center.x + placement.position[0],
+      placement.position[0],
       bounds.minimum.y + placement.position[1],
-      center.z + placement.position[2],
+      placement.position[2],
     )
     mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
     mesh.material = materials[placement.role] ?? architecture
@@ -284,6 +308,18 @@ async function getStylePack(): Promise<StylePack> {
   if (response.status === 404) throw new Error('指定的装修风格不存在')
   if (!response.ok) throw new Error(`风格服务请求失败（${response.status}）`)
   return parseStylePack(await response.json())
+}
+
+async function getLayoutManifest(): Promise<LayoutManifest> {
+  const response = await fetch(
+    apiUrl(
+      `/api/projects/${encodeURIComponent(projectId)}/layout?styleId=${encodeURIComponent(styleId)}`,
+    ),
+    { cache: 'no-store' },
+  )
+  if (response.status === 404) throw new Error('项目场景或装修风格不存在')
+  if (!response.ok) throw new Error(`自动布局服务请求失败（${response.status}）`)
+  return parseLayoutManifest(await response.json())
 }
 
 async function getLatestManifest(): Promise<ArtifactManifest> {
@@ -315,8 +351,20 @@ async function loadModel(): Promise<void> {
       throw new Error('链接包含无效的 style 参数')
     }
     setStatus('正在读取模型', '检查最新发布版本…', 4)
-    const [manifest, style] = await Promise.all([waitUntilReady(), getStylePack()])
+    const [manifest, style, layout] = await Promise.all([
+      waitUntilReady(),
+      getStylePack(),
+      getLayoutManifest(),
+    ])
     if (!manifest.optimized) throw new Error('模型产物尚未准备完成')
+    if (
+      layout.projectId !== manifest.projectId ||
+      layout.sceneRevision !== manifest.sceneRevision ||
+      layout.style.id !== style.id ||
+      layout.style.version !== style.version
+    ) {
+      throw new Error('模型、风格与自动布局版本不一致')
+    }
     await Promise.all([
       import('@babylonjs/loaders/glTF/2.0/glTFLoader'),
       import('@babylonjs/loaders/glTF/2.0/Extensions/EXT_meshopt_compression'),
@@ -332,11 +380,11 @@ async function loadModel(): Promise<void> {
       },
     })
     container.addAllToScene()
-    applyStyle(style, container)
-    frameModel()
+    applyStyle(style, layout, container)
+    frameModel(layout)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
-    setReady(manifest, style)
+    setReady(manifest, style, layout)
   } catch (error) {
     setError(error)
   }

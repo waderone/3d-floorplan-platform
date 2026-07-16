@@ -67,9 +67,11 @@ class StylePlacement(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
+    item_id: str = Field(alias="itemId", pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     asset_id: str = Field(alias="assetId", pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     kind: Literal["box", "cylinder", "sphere"]
     role: str = Field(pattern=r"^[a-z][a-z0-9-]{0,31}$")
+    collision_mode: Literal["solid", "surface"] = Field(alias="collisionMode")
     position: tuple[float, float, float]
     size: tuple[float, float, float]
     rotation_y_degrees: float = Field(alias="rotationYDegrees", ge=-360, le=360)
@@ -85,13 +87,15 @@ class StyleLayout(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     floor_padding: float = Field(alias="floorPadding", ge=0, le=20)
+    wall_clearance: float = Field(alias="wallClearance", ge=0, le=2)
+    item_clearance: float = Field(alias="itemClearance", ge=0, le=2)
     placements: list[StylePlacement]
 
 
 class StylePack(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    schema_version: Literal["1.1"] = Field(alias="schemaVersion")
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     version: int = Field(ge=1)
     name: str = Field(min_length=1, max_length=80)
@@ -128,6 +132,13 @@ class StylePack(BaseModel):
             raise ValueError(f"placements reference missing assets: {missing_assets}")
         if missing_roles:
             raise ValueError(f"placements reference missing material roles: {missing_roles}")
+        collision_modes: dict[str, str] = {}
+        for placement in self.layout.placements:
+            existing = collision_modes.setdefault(placement.item_id, placement.collision_mode)
+            if existing != placement.collision_mode:
+                raise ValueError("all parts of a furniture item must share collisionMode")
+        if not any(placement.collision_mode == "solid" for placement in self.layout.placements):
+            raise ValueError("style layout must contain at least one solid furniture item")
         return self
 
 

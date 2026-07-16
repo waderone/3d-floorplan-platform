@@ -8,6 +8,7 @@
 - 场景图节点引用和资产元数据的最小边界校验；
 - GLB 上传、异步优化状态、版本化 manifest 和静态产物访问；
 - 版本化装修风格目录和 Blender 异步效果图状态；
+- Zone/Slab 房间提取、确定性家具布局和明确回退状态；
 - 健康检查。
 
 数据默认保存在当前目录的 `data/` 中，也可通过
@@ -121,6 +122,7 @@ POST 使用 multipart，字段为 `file`（`model/gltf-binary`）和 `sceneRevis
 
 - `GET /api/styles`
 - `GET /api/styles/{style_id}`
+- `GET /api/projects/{project_id}/layout?styleId=warm-minimal`
 - `POST /api/projects/{project_id}/renders`
 - `GET /api/projects/{project_id}/renders/latest?styleId=warm-minimal`
 
@@ -135,10 +137,13 @@ POST JSON 示例：
 
 场景 revision 必须与 ready 的最新 GLB 一致。接口返回 HTTP 202 和 processing manifest；
 后台完成后 latest 变为 ready 或 failed。ready 记录风格 id/version、PNG SHA-256、字节数、
-1280×720 尺寸、Blender 版本、引擎和耗时，图片通过 `/renders/.../image.png` 访问。
+1280×720 尺寸、Blender 版本、引擎、耗时和 `layoutId`，图片通过
+`/renders/.../image.png` 访问。
 
-当前 `warm-minimal@1` 只使用本项目原创程序化材质和家具；固定布局用于技术验证，不代表
-已经实现房间感知自动布置。
+layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。可放置时返回 `ready`、
+选定房间、全部候选房间和带 `roomId` 的绝对坐标；缺少闭合房间或尺寸不足时返回
+`fallback` 与 `no-room-polygon`/`no-room-fits`，placements 为空。三套风格只使用本项目
+原创程序化材质和家具。
 
 ## 测试
 

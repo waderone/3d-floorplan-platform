@@ -6,16 +6,18 @@ export interface PbrStyleMaterial {
 
 export interface StylePlacement {
   id: string
+  itemId: string
   assetId: string
   kind: 'box' | 'cylinder' | 'sphere'
   role: string
+  collisionMode: 'solid' | 'surface'
   position: [number, number, number]
   size: [number, number, number]
   rotationYDegrees: number
 }
 
 export interface StylePack {
-  schemaVersion: '1.0'
+  schemaVersion: '1.1'
   id: string
   version: number
   name: string
@@ -41,7 +43,12 @@ export interface StylePack {
     source: 'project-authored'
     license: { spdx: 'LicenseRef-Project-Authored'; source: 'project-authored' }
   }>
-  layout: { floorPadding: number; placements: StylePlacement[] }
+  layout: {
+    floorPadding: number
+    wallClearance: number
+    itemClearance: number
+    placements: StylePlacement[]
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,7 +90,7 @@ function parseMaterial(value: unknown): PbrStyleMaterial {
 export function parseStylePack(value: unknown): StylePack {
   if (
     !isRecord(value) ||
-    value.schemaVersion !== '1.0' ||
+    value.schemaVersion !== '1.1' ||
     typeof value.id !== 'string' ||
     !/^[a-z0-9][a-z0-9-]{0,63}$/.test(value.id) ||
     !Number.isInteger(value.version) ||
@@ -127,9 +134,11 @@ export function parseStylePack(value: unknown): StylePack {
     if (
       !isRecord(placement) ||
       typeof placement.id !== 'string' ||
+      typeof placement.itemId !== 'string' ||
       typeof placement.assetId !== 'string' ||
       !(placement.kind === 'box' || placement.kind === 'cylinder' || placement.kind === 'sphere') ||
       typeof placement.role !== 'string' ||
+      !(placement.collisionMode === 'solid' || placement.collisionMode === 'surface') ||
       !assetIds.has(placement.assetId) ||
       !materials[placement.role] ||
       !isNumber(placement.rotationYDegrees)
@@ -154,7 +163,9 @@ export function parseStylePack(value: unknown): StylePack {
     !isNumber(camera.alphaDegrees) ||
     !isNumber(camera.betaDegrees) ||
     !isNumber(camera.radiusMultiplier) ||
-    !isNumber(value.layout.floorPadding)
+    !isNumber(value.layout.floorPadding) ||
+    !isNumber(value.layout.wallClearance) ||
+    !isNumber(value.layout.itemClearance)
   ) {
     throw new Error('风格包环境格式无效')
   }

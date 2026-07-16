@@ -17,6 +17,7 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render a styled floorplan GLB")
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--style", required=True, type=Path)
+    parser.add_argument("--layout", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
     return parser.parse_args(arguments)
@@ -43,6 +44,18 @@ def load_style(path: Path) -> dict[str, Any]:
     required = {"id", "version", "materials", "environment", "camera", "output", "layout"}
     if not isinstance(value, dict) or not required.issubset(value):
         raise ValueError("style pack is invalid")
+    return value
+
+
+def load_layout(path: Path, style: dict[str, Any]) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    required = {"layoutId", "pipelineVersion", "style", "status", "placements"}
+    if not isinstance(value, dict) or not required.issubset(value):
+        raise ValueError("layout manifest is invalid")
+    if value["style"] != {"id": style["id"], "version": style["version"]}:
+        raise ValueError("layout manifest style does not match the style pack")
+    if value["status"] not in {"ready", "fallback"} or not isinstance(value["placements"], list):
+        raise ValueError("layout manifest status is invalid")
     return value
 
 
@@ -86,14 +99,13 @@ def bevel(obj: bpy.types.Object, size: tuple[float, float, float]) -> None:
 
 def create_primitive(
     placement: dict[str, Any],
-    center: Vector,
     floor_top: float,
     material: bpy.types.Material,
 ) -> bpy.types.Object:
     x, y, z = (float(value) for value in placement["position"])
     size = tuple(float(value) for value in placement["size"])
     blender_size = (size[0], size[2], size[1])
-    location = (center.x + x, center.y + z, floor_top + y)
+    location = (x, z, floor_top + y)
     kind = placement["kind"]
     if kind == "box":
         bpy.ops.mesh.primitive_cube_add(location=location)
@@ -139,7 +151,11 @@ def add_area_light(name: str, location: Vector, target: Vector, color: str, ener
     point_at(obj, target)
 
 
-def configure_scene(style: dict[str, Any], imported: list[bpy.types.Object]) -> int:
+def configure_scene(
+    style: dict[str, Any],
+    layout: dict[str, Any],
+    imported: list[bpy.types.Object],
+) -> int:
     scene = bpy.context.scene
     materials = {
         role: create_material(role, value) for role, value in style["materials"].items()
@@ -164,13 +180,30 @@ def configure_scene(style: dict[str, Any], imported: list[bpy.types.Object]) -> 
     apply_material(floor, materials["floor"])
 
     procedural = [
-        create_primitive(placement, center, floor_top, materials[placement["role"]])
-        for placement in style["layout"]["placements"]
+        create_primitive(placement, floor_top, materials[placement["role"]])
+        for placement in layout["placements"]
     ]
     all_meshes = imported + [floor] + procedural
     styled_minimum, styled_maximum = mesh_bounds(all_meshes)
-    target = (styled_minimum + styled_maximum) / 2
-    target.z = floor_top + max(0.8, (styled_maximum.z - floor_top) * 0.42)
+    selected_room = next(
+        (room for room in layout["rooms"] if room["id"] == layout["selectedRoomId"]),
+        None,
+    )
+    if selected_room:
+        room_x = [float(point[0]) for point in selected_room["polygon"]]
+        room_y = [float(point[1]) for point in selected_room["polygon"]]
+        target = Vector(
+            (
+                float(selected_room["centroid"][0]),
+                float(selected_room["centroid"][1]),
+                floor_top + max(0.8, (styled_maximum.z - floor_top) * 0.42),
+            )
+        )
+        focus_diagonal = math.hypot(max(room_x) - min(room_x), max(room_y) - min(room_y))
+    else:
+        target = (styled_minimum + styled_maximum) / 2
+        target.z = floor_top + max(0.8, (styled_maximum.z - floor_top) * 0.42)
+        focus_diagonal = (styled_maximum - styled_minimum).length
 
     environment = style["environment"]
     world = bpy.data.worlds.new("style-world") if scene.world is None else scene.world
@@ -182,7 +215,7 @@ def configure_scene(style: dict[str, Any], imported: list[bpy.types.Object]) -> 
     background.inputs["Color"].default_value = hex_color(environment["backgroundColor"])
     background.inputs["Strength"].default_value = float(environment["ambientIntensity"]) * 0.32
 
-    radius = max(8.0, (styled_maximum - styled_minimum).length * 1.25)
+    radius = max(7.0, focus_diagonal * 0.92)
     add_area_light(
         "style-key",
         target + Vector((radius * 0.45, -radius * 0.5, radius * 0.75)),
@@ -235,12 +268,13 @@ def main() -> None:
     started = time.monotonic()
     args = parse_arguments()
     style = load_style(args.style)
+    layout = load_layout(args.layout, style)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(args.input), import_shading="NORMALS")
     imported = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
-    object_count = configure_scene(style, imported)
+    object_count = configure_scene(style, layout, imported)
     bpy.context.scene.render.filepath = str(args.output)
     bpy.ops.render.render(write_still=True)
     report = {
@@ -250,6 +284,9 @@ def main() -> None:
         "objects": object_count,
         "styleId": style["id"],
         "styleVersion": style["version"],
+        "layoutId": layout["layoutId"],
+        "layoutStatus": layout["status"],
+        "placements": len(layout["placements"]),
     }
     args.report.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
 

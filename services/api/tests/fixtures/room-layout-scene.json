@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "revision": 1,
+  "units": "m",
+  "scene": {
+    "nodes": {
+      "site_layout": { "id": "site_layout", "type": "site", "children": ["building_layout"] },
+      "building_layout": { "id": "building_layout", "type": "building", "parentId": "site_layout", "children": ["level_layout"] },
+      "level_layout": { "id": "level_layout", "type": "level", "parentId": "building_layout", "children": ["zone_living", "zone_bedroom"] },
+      "zone_living": {
+        "id": "zone_living",
+        "type": "zone",
+        "name": "客餐厅",
+        "parentId": "level_layout",
+        "polygon": [[-7, -3], [1, -3], [1, 4], [-7, 4]]
+      },
+      "zone_bedroom": {
+        "id": "zone_bedroom",
+        "type": "zone",
+        "name": "卧室",
+        "parentId": "level_layout",
+        "polygon": [[1, -3], [5, -3], [5, 4], [1, 4]]
+      }
+    },
+    "rootNodeIds": ["site_layout"],
+    "collections": {},
+    "materials": {}
+  },
+  "assets": []
+}

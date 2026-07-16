@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://floorplan.local/schemas/style-pack-1.0.json",
+  "$id": "https://floorplan.local/schemas/style-pack-1.1.json",
   "title": "3D Floorplan Style Pack",
   "type": "object",
   "additionalProperties": false,
@@ -19,7 +19,7 @@
     "layout"
   ],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
+    "schemaVersion": { "const": "1.1" },
     "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
     "version": { "type": "integer", "minimum": 1 },
     "name": { "type": "string", "minLength": 1, "maxLength": 80 },
@@ -87,9 +87,11 @@
     "layout": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["floorPadding", "placements"],
+      "required": ["floorPadding", "wallClearance", "itemClearance", "placements"],
       "properties": {
         "floorPadding": { "type": "number", "minimum": 0, "maximum": 20 },
+        "wallClearance": { "type": "number", "minimum": 0, "maximum": 2 },
+        "itemClearance": { "type": "number", "minimum": 0, "maximum": 2 },
         "placements": {
           "type": "array",
           "items": { "$ref": "#/$defs/placement" }
@@ -139,12 +141,14 @@
     "placement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "assetId", "kind", "role", "position", "size", "rotationYDegrees"],
+      "required": ["id", "itemId", "assetId", "kind", "role", "collisionMode", "position", "size", "rotationYDegrees"],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+        "itemId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
         "assetId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
         "kind": { "enum": ["box", "cylinder", "sphere"] },
         "role": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+        "collisionMode": { "enum": ["solid", "surface"] },
         "position": { "$ref": "#/$defs/vector3" },
         "size": { "$ref": "#/$defs/size3" },
         "rotationYDegrees": { "type": "number", "minimum": -360, "maximum": 360 }

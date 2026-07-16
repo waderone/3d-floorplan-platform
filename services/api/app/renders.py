@@ -13,10 +13,11 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .layouts import LayoutManifest
 from .styles import StylePack
 
 
-RENDER_PIPELINE_VERSION = "blender-5x-style-v1"
+RENDER_PIPELINE_VERSION = "blender-5x-style-layout-v2"
 MAX_RENDER_BYTES = 50 * 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -45,6 +46,7 @@ class RenderManifest(BaseModel):
     project_id: str = Field(alias="projectId")
     scene_revision: int = Field(alias="sceneRevision", ge=1)
     artifact_id: str = Field(alias="artifactId", pattern=r"^[0-9a-f]{64}$")
+    layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
     pipeline_version: str = Field(alias="pipelineVersion")
     style: StyleReference
     status: Literal["processing", "ready", "failed"]
@@ -62,6 +64,7 @@ class RenderBackend(Protocol):
         self,
         source_glb: Path,
         style_path: Path,
+        layout_path: Path,
         output_png: Path,
     ) -> dict[str, Any]: ...
 
@@ -72,7 +75,13 @@ class BlenderRenderer:
         self.script = script or repository_root / "workers" / "render" / "render_scene.py"
         self.blender_binary = blender_binary or os.getenv("FLOORPLAN_BLENDER_BIN", "blender")
 
-    def render(self, source_glb: Path, style_path: Path, output_png: Path) -> dict[str, Any]:
+    def render(
+        self,
+        source_glb: Path,
+        style_path: Path,
+        layout_path: Path,
+        output_png: Path,
+    ) -> dict[str, Any]:
         report_path = output_png.with_suffix(".report.json")
         completed = subprocess.run(
             [
@@ -89,6 +98,8 @@ class BlenderRenderer:
                 str(source_glb),
                 "--style",
                 str(style_path),
+                "--layout",
+                str(layout_path),
                 "--output",
                 str(output_png),
                 "--report",
@@ -148,6 +159,9 @@ class RenderStore:
     def _manifest_path(self, render_id: str) -> Path:
         return self._render_directory(render_id) / "manifest.json"
 
+    def layout_path(self, render_id: str) -> Path:
+        return self._render_directory(render_id) / "layout.json"
+
     def _latest_path(self, project_id: str, style_id: str) -> Path:
         return self.index_directory / f"{project_id}--{style_id}.json"
 
@@ -184,9 +198,10 @@ class RenderStore:
         scene_revision: int,
         artifact_id: str,
         style: StylePack,
+        layout: LayoutManifest,
     ) -> tuple[RenderManifest, bool]:
         identity = (
-            f"{project_id}:{scene_revision}:{artifact_id}:{style.id}:{style.version}:"
+            f"{project_id}:{scene_revision}:{artifact_id}:{layout.layout_id}:{style.id}:{style.version}:"
             f"{RENDER_PIPELINE_VERSION}"
         ).encode()
         render_id = hashlib.sha256(identity).hexdigest()
@@ -202,6 +217,7 @@ class RenderStore:
                 projectId=project_id,
                 sceneRevision=scene_revision,
                 artifactId=artifact_id,
+                layoutId=layout.layout_id,
                 pipelineVersion=RENDER_PIPELINE_VERSION,
                 style=StyleReference(id=style.id, version=style.version),
                 status="processing",
@@ -209,6 +225,10 @@ class RenderStore:
                 updatedAt=now,
             )
             self._write_manifest(manifest)
+            self._write_json(
+                self.layout_path(render_id),
+                layout.model_dump(by_alias=True, mode="json"),
+            )
             self._write_json(
                 self._latest_path(project_id, style.id),
                 {"renderId": render_id},
@@ -221,6 +241,7 @@ class RenderStore:
         renderer: RenderBackend,
         source_glb: Path,
         style_path: Path,
+        layout_path: Path,
         style: StylePack,
     ) -> None:
         manifest = self.load(render_id)
@@ -232,7 +253,7 @@ class RenderStore:
         try:
             if not source_glb.is_file():
                 raise RuntimeError("optimized GLB is missing")
-            report = renderer.render(source_glb, style_path, temporary_output)
+            report = renderer.render(source_glb, style_path, layout_path, temporary_output)
             if not temporary_output.is_file():
                 raise RuntimeError("render worker did not create an output PNG")
             width, height, size, sha256 = validate_png(temporary_output)
