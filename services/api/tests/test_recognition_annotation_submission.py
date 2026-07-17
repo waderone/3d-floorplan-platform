@@ -25,6 +25,7 @@ def _submission(**overrides: object) -> dict[str, object]:
         },
         "annotatedBy": None,
         "annotatedAt": None,
+        "correctionSession": None,
         "notes": "",
     }
     value.update(overrides)
@@ -46,6 +47,7 @@ def _workpack() -> SimpleNamespace:
         candidate=SimpleNamespace(candidate_id="commons-1"),
         review=SimpleNamespace(curation=SimpleNamespace(plan_width_meters=10)),
         suggestions=SimpleNamespace(
+            pipeline_version="opencv-axis-aligned-baseline-v1",
             metrics=SimpleNamespace(
                 plan_bounds_pixels=(100, 100, 1100, 700),
                 pixels_per_meter=100,
@@ -131,3 +133,27 @@ def test_submission_geometry_must_stay_inside_workpack_calibration() -> None:
 
     with pytest.raises(ValueError, match="outside the calibrated plan bounds"):
         validate_submission_identity(_workpack(), submission)  # type: ignore[arg-type]
+
+
+def test_submission_correction_timer_must_match_workpack_pipeline() -> None:
+    submission = AnnotationSubmission.model_validate(
+        _submission(
+            correctionSession={
+                "pipelineVersion": "another-pipeline",
+                "durationSeconds": 42.5,
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="timer pipeline does not match"):
+        validate_submission_identity(_workpack(), submission)  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError, match="greater than 0"):
+        AnnotationSubmission.model_validate(
+            _submission(
+                correctionSession={
+                    "pipelineVersion": "opencv-axis-aligned-baseline-v1",
+                    "durationSeconds": 0,
+                }
+            )
+        )

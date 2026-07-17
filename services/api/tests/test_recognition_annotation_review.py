@@ -37,6 +37,10 @@ def _annotation_content() -> bytes:
             },
             "annotatedBy": "annotator-a",
             "annotatedAt": "2026-07-17",
+            "correctionSession": {
+                "pipelineVersion": "opencv-axis-aligned-baseline-v1",
+                "durationSeconds": 386.25,
+            },
             "notes": "",
         }
     )
@@ -71,6 +75,7 @@ def _workpack(
             ),
         ),
         suggestions=SimpleNamespace(
+            pipeline_version="opencv-axis-aligned-baseline-v1",
             metrics=SimpleNamespace(
                 plan_bounds_pixels=(0, 0, 1000, 600),
                 pixels_per_meter=100,
@@ -172,6 +177,12 @@ def test_approved_review_promotes_a_complete_sample_with_provenance(tmp_path) ->
     assert sample.annotation_provenance.annotated_by == "annotator-a"
     assert sample.annotation_provenance.reviewed_by == "reviewer-b"
     assert sample.annotations.walls[0].id == "wall-1"
+    assert len(sample.correction_sessions) == 1
+    assert sample.correction_sessions[0].pipeline_version == (
+        "opencv-axis-aligned-baseline-v1"
+    )
+    assert sample.correction_sessions[0].duration_seconds == 386.25
+    assert sample.correction_sessions[0].reviewer == "annotator-a"
 
 
 def test_promotion_rejects_unapproved_rights_or_geometry_review(tmp_path) -> None:
@@ -270,6 +281,42 @@ def test_repository_promotion_requires_repository_path_and_redistribution(tmp_pa
             "private/commons-1.png",
             "test",
             "repository",
+            "Sanitized example floor plan",
+            "Example author",
+        )
+
+
+def test_promotion_requires_recorded_correction_time(tmp_path) -> None:
+    image = tmp_path / "private" / "commons-1.png"
+    image.parent.mkdir()
+    image.write_bytes(b"audited image")
+    workpack = _workpack(hashlib.sha256(image.read_bytes()).hexdigest())
+    payload = AnnotationSubmission.model_validate_json(_annotation_content()).model_dump(
+        by_alias=True,
+        mode="json",
+    )
+    payload["correctionSession"] = None
+    content = AnnotationSubmission.model_validate(payload).model_dump_json(
+        by_alias=True
+    ).encode()
+    review = create_annotation_review(
+        workpack,  # type: ignore[arg-type]
+        content,
+        "approved",
+        "reviewer-b",
+        "2026-07-17",
+    )
+
+    with pytest.raises(ValueError, match="recorded correction session"):
+        build_evaluation_sample(
+            workpack,  # type: ignore[arg-type]
+            content,
+            review,
+            tmp_path,
+            "commons-1",
+            "private/commons-1.png",
+            "calibration",
+            "local-only",
             "Sanitized example floor plan",
             "Example author",
         )

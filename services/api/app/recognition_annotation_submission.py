@@ -11,6 +11,17 @@ from .recognition_annotation_workpack import AnnotationWorkpack
 from .recognition_evaluation import EvaluationAnnotations
 
 
+class AnnotationCorrectionSession(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid", allow_inf_nan=False)
+
+    pipeline_version: str = Field(
+        alias="pipelineVersion",
+        min_length=1,
+        max_length=100,
+    )
+    duration_seconds: float = Field(alias="durationSeconds", gt=0, le=7200)
+
+
 class AnnotationSubmission(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -31,6 +42,10 @@ class AnnotationSubmission(BaseModel):
         alias="annotatedAt",
         default=None,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
+    )
+    correction_session: AnnotationCorrectionSession | None = Field(
+        alias="correctionSession",
+        default=None,
     )
     notes: str = Field(default="", max_length=2000)
 
@@ -59,6 +74,12 @@ def validate_submission_identity(
         raise ValueError("annotation belongs to another workpack")
     if submission.candidate_id != workpack.candidate.candidate_id:
         raise ValueError("annotation belongs to another candidate")
+    if (
+        submission.correction_session is not None
+        and submission.correction_session.pipeline_version
+        != workpack.suggestions.pipeline_version
+    ):
+        raise ValueError("correction timer pipeline does not match the workpack")
     plan_width = workpack.review.curation.plan_width_meters
     metrics = workpack.suggestions.metrics
     points = [
@@ -91,6 +112,11 @@ def validate_submission_identity(
         "walls": len(submission.annotations.walls),
         "rooms": len(submission.annotations.rooms),
         "openings": len(submission.annotations.openings),
+        "correctionDurationSeconds": (
+            submission.correction_session.duration_seconds
+            if submission.correction_session is not None
+            else None
+        ),
     }
 
 

@@ -54,6 +54,7 @@
 - [候选审核与标注工作包](docs/adr/0012-recognition-annotation-workpack.md)
 - [独立户型真值标注台](docs/adr/0013-ground-truth-annotation-workbench.md)
 - [双人复核与评测样本晋级](docs/adr/0014-double-review-and-sample-promotion.md)
+- [前台有效标注时间自动计时](docs/adr/0015-active-annotation-timing.md)
 
 ## 仓库结构
 
@@ -68,5 +69,5 @@ outputs/              立项与交付文档
 
 ## 下一步
 
-下一阶段使用已打通的标注、双人复核和晋级链路完成首批合法真实户型样本，为门窗、斜墙和房间
-语义模型建立可量化基线，并记录每套户型的人工修正时间。
+下一阶段使用已打通的标注、自动计时、双人复核和晋级链路完成首批合法真实户型样本，为门窗、
+斜墙和房间语义模型建立可量化基线，并统计每套户型的有效人工修正时间。

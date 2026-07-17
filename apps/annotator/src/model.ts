@@ -45,7 +45,12 @@ export interface AnnotationWorkpack {
     heightPixels: number
   }
   calibration: Calibration
-  suggestions: Annotations
+  suggestions: Annotations & { pipelineVersion: string }
+}
+
+export interface AnnotationCorrectionSession {
+  pipelineVersion: string
+  durationSeconds: number
 }
 
 export interface AnnotationSubmission {
@@ -56,8 +61,18 @@ export interface AnnotationSubmission {
   annotations: Annotations
   annotatedBy: string | null
   annotatedAt: string | null
+  correctionSession: AnnotationCorrectionSession | null
   notes: string
 }
+
+export interface ActiveCorrectionTimer {
+  accumulatedMilliseconds: number
+  lastTickMilliseconds: number
+  lastActivityMilliseconds: number | null
+  foreground: boolean
+}
+
+export const ANNOTATION_IDLE_TIMEOUT_MS = 30_000
 
 export interface AnnotationReview {
   schemaVersion: '1.0'
@@ -96,6 +111,12 @@ function finiteNumber(value: unknown, label: string): number {
 function positiveNumber(value: unknown, label: string, maximum = Number.MAX_VALUE): number {
   const parsed = finiteNumber(value, label)
   if (parsed <= 0 || parsed > maximum) throw new Error(`${label} 超出范围`)
+  return parsed
+}
+
+function nonNegativeNumber(value: unknown, label: string, maximum = Number.MAX_VALUE): number {
+  const parsed = finiteNumber(value, label)
+  if (parsed < 0 || parsed > maximum) throw new Error(`${label} 超出范围`)
   return parsed
 }
 
@@ -241,6 +262,7 @@ export function parseWorkpack(value: unknown): AnnotationWorkpack {
       imageHeightPixels: heightPixels,
     },
     suggestions: {
+      pipelineVersion: boundedString(suggestions.pipelineVersion, '识别算法版本', 100),
       coordinateSystem: 'plan-bottom-left-x-right-z-up-m',
       walls: suggestions.walls.map(wall),
       rooms: suggestions.rooms.map(room),
@@ -261,6 +283,19 @@ export function parseSubmission(value: unknown, workpack: AnnotationWorkpack): A
   const annotatedAt = root.annotatedAt === null ? null : stringValue(root.annotatedAt, '标注日期')
   const notes = typeof root.notes === 'string' ? root.notes : ''
   if (notes.length > 2000) throw new Error('备注超出长度限制')
+  const correctionSession = root.correctionSession === undefined || root.correctionSession === null
+    ? null
+    : (() => {
+        const session = record(root.correctionSession, '人工修正计时')
+        const pipelineVersion = boundedString(session.pipelineVersion, '计时算法版本', 100)
+        if (pipelineVersion !== workpack.suggestions.pipelineVersion) {
+          throw new Error('计时算法版本与工作包不一致')
+        }
+        return {
+          pipelineVersion,
+          durationSeconds: positiveNumber(session.durationSeconds, '有效编辑时间', 7200),
+        }
+      })()
   const parsed: AnnotationSubmission = {
     schemaVersion: '1.0',
     workpackId: workpack.workpackId,
@@ -269,6 +304,7 @@ export function parseSubmission(value: unknown, workpack: AnnotationWorkpack): A
     annotations: annotations(root.annotations),
     annotatedBy,
     annotatedAt,
+    correctionSession,
     notes,
   }
   const points = parsed.annotations.walls.flatMap((entry) => [entry.start, entry.end])
@@ -370,8 +406,13 @@ export function createSubmission(
   status: 'draft' | 'ready-for-review',
   annotatedBy: string,
   notes: string,
+  durationSeconds = 0,
   date = new Date().toISOString().slice(0, 10),
 ): AnnotationSubmission {
+  const normalizedDuration = nonNegativeNumber(durationSeconds, '有效编辑时间', 7200)
+  if (status === 'ready-for-review' && normalizedDuration <= 0) {
+    throw new Error('提交待复核前必须产生有效编辑时间')
+  }
   return parseSubmission(
     {
       schemaVersion: '1.0',
@@ -381,10 +422,74 @@ export function createSubmission(
       annotations: value,
       annotatedBy: annotatedBy.trim() || null,
       annotatedAt: annotatedBy.trim() ? date : null,
+      correctionSession: normalizedDuration > 0
+        ? {
+            pipelineVersion: workpack.suggestions.pipelineVersion,
+            durationSeconds: Number(normalizedDuration.toFixed(3)),
+          }
+        : null,
       notes,
     },
     workpack,
   )
+}
+
+export function createCorrectionTimer(
+  durationSeconds = 0,
+  nowMilliseconds = 0,
+): ActiveCorrectionTimer {
+  const normalizedDuration = nonNegativeNumber(durationSeconds, '有效编辑时间', 7200)
+  return {
+    accumulatedMilliseconds: normalizedDuration * 1000,
+    lastTickMilliseconds: nowMilliseconds,
+    lastActivityMilliseconds: null,
+    foreground: true,
+  }
+}
+
+export function advanceCorrectionTimer(
+  timer: ActiveCorrectionTimer,
+  nowMilliseconds: number,
+): ActiveCorrectionTimer {
+  if (!Number.isFinite(nowMilliseconds) || nowMilliseconds < timer.lastTickMilliseconds) {
+    throw new Error('计时时间点无效')
+  }
+  const activeUntil = timer.lastActivityMilliseconds === null
+    ? timer.lastTickMilliseconds
+    : timer.lastActivityMilliseconds + ANNOTATION_IDLE_TIMEOUT_MS
+  const elapsed = timer.foreground
+    ? Math.max(0, Math.min(nowMilliseconds, activeUntil) - timer.lastTickMilliseconds)
+    : 0
+  return {
+    ...timer,
+    accumulatedMilliseconds: Math.min(7_200_000, timer.accumulatedMilliseconds + elapsed),
+    lastTickMilliseconds: nowMilliseconds,
+  }
+}
+
+export function recordCorrectionActivity(
+  timer: ActiveCorrectionTimer,
+  nowMilliseconds: number,
+): ActiveCorrectionTimer {
+  const advanced = advanceCorrectionTimer(timer, nowMilliseconds)
+  return { ...advanced, lastActivityMilliseconds: nowMilliseconds }
+}
+
+export function setCorrectionTimerForeground(
+  timer: ActiveCorrectionTimer,
+  foreground: boolean,
+  nowMilliseconds: number,
+): ActiveCorrectionTimer {
+  const advanced = advanceCorrectionTimer(timer, nowMilliseconds)
+  return { ...advanced, foreground }
+}
+
+export function correctionDurationSeconds(
+  timer: ActiveCorrectionTimer,
+  nowMilliseconds: number,
+): number {
+  const milliseconds = advanceCorrectionTimer(timer, nowMilliseconds).accumulatedMilliseconds
+  return Number((milliseconds / 1000).toFixed(3))
 }
 
 export function createAnnotationReview(

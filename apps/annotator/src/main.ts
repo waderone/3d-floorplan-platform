@@ -1,8 +1,12 @@
 import {
+  advanceCorrectionTimer,
+  ANNOTATION_IDLE_TIMEOUT_MS,
   clampMeters,
   cloneAnnotations,
   copySuggestions,
+  correctionDurationSeconds,
   createAnnotationReview,
+  createCorrectionTimer,
   createSubmission,
   emptyAnnotations,
   metersPerPixel,
@@ -11,7 +15,10 @@ import {
   parseSubmission,
   parseWorkpack,
   pixelToMeters,
+  recordCorrectionActivity,
+  setCorrectionTimerForeground,
   sha256Hex,
+  type ActiveCorrectionTimer,
   type AnnotationWorkpack,
   type AnnotationSubmission,
   type Annotations,
@@ -132,6 +139,10 @@ root.innerHTML = `
 
         <section class="inspector-section export-section">
           <span class="panel-label">HANDOFF</span>
+          <div class="timing-card" id="timing-card" data-state="waiting">
+            <div><span>有效编辑时间</span><strong id="timing-value">00:00</strong></div>
+            <small id="timing-state">等待首次真值编辑</small>
+          </div>
           <label>标注人<input id="annotated-by" type="text" maxlength="100" placeholder="姓名或团队账号" /></label>
           <label>备注<textarea id="annotation-notes" maxlength="2000" rows="3" placeholder="记录尺度疑点、未确认门窗等"></textarea></label>
           <div class="export-buttons">
@@ -186,6 +197,9 @@ const reviewedByInput = element<HTMLInputElement>('#reviewed-by')
 const reviewCommentInput = element<HTMLTextAreaElement>('#review-comment')
 const requestChangesButton = element<HTMLButtonElement>('#request-changes')
 const approveReviewButton = element<HTMLButtonElement>('#approve-review')
+const timingCard = element<HTMLElement>('#timing-card')
+const timingValue = element<HTMLElement>('#timing-value')
+const timingState = element<HTMLElement>('#timing-state')
 
 let workpack: AnnotationWorkpack | null = null
 let imageUrl: string | null = null
@@ -198,6 +212,7 @@ let history = [cloneAnnotations(annotations)]
 let historyIndex = 0
 let dragTarget: DragTarget | null = null
 let dragStart: Annotations | null = null
+let correctionTimer: ActiveCorrectionTimer = createCorrectionTimer(0, performance.now())
 let reviewTarget: {
   submission: AnnotationSubmission
   sha256: string
@@ -214,6 +229,58 @@ function isReady(): boolean {
   return workpack !== null && imageVerified && imageUrl !== null
 }
 
+function timerForeground(): boolean {
+  return document.visibilityState === 'visible' && document.hasFocus()
+}
+
+function resetCorrectionTimer(durationSeconds = 0): void {
+  const now = performance.now()
+  correctionTimer = {
+    ...createCorrectionTimer(durationSeconds, now),
+    foreground: timerForeground(),
+  }
+  renderTiming(now)
+}
+
+function markEditingActivity(): void {
+  correctionTimer = recordCorrectionActivity(correctionTimer, performance.now())
+  renderTiming()
+}
+
+function currentCorrectionDuration(): number {
+  return correctionDurationSeconds(correctionTimer, performance.now())
+}
+
+function formatDuration(seconds: number): string {
+  const wholeSeconds = Math.floor(seconds)
+  const minutes = Math.floor(wholeSeconds / 60)
+  const remainder = wholeSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+}
+
+function renderTiming(now = performance.now()): void {
+  const duration = correctionDurationSeconds(correctionTimer, now)
+  const hasActivity = correctionTimer.lastActivityMilliseconds !== null
+  const active = hasActivity && correctionTimer.foreground &&
+    now - (correctionTimer.lastActivityMilliseconds ?? now) < ANNOTATION_IDLE_TIMEOUT_MS
+  const state = !hasActivity
+    ? 'waiting'
+    : !correctionTimer.foreground
+      ? 'paused'
+      : active
+        ? 'active'
+        : 'idle'
+  timingCard.dataset.state = state
+  timingValue.textContent = formatDuration(duration)
+  timingState.textContent = state === 'waiting'
+    ? (duration > 0 ? '已恢复累计时间，等待继续编辑' : '等待首次真值编辑')
+    : state === 'active'
+      ? '正在累计前台有效时间'
+      : state === 'paused'
+        ? '页面失焦，计时已暂停'
+        : '连续 30 秒无操作，计时已暂停'
+}
+
 function resetHistory(value: Annotations): void {
   annotations = cloneAnnotations(value)
   history = [cloneAnnotations(value)]
@@ -225,12 +292,20 @@ function resetHistory(value: Annotations): void {
 function validateAndCommit(next: Annotations, message?: string): boolean {
   if (!workpack) return false
   try {
-    createSubmission(workpack, next, 'draft', annotatedByInput.value, notesInput.value)
+    createSubmission(
+      workpack,
+      next,
+      'draft',
+      annotatedByInput.value,
+      notesInput.value,
+      currentCorrectionDuration(),
+    )
     annotations = cloneAnnotations(next)
     history = history.slice(0, historyIndex + 1)
     history.push(cloneAnnotations(next))
     historyIndex += 1
     reviewTarget = null
+    markEditingActivity()
     if (message) setMessage(message, 'success')
     render()
     return true
@@ -340,6 +415,7 @@ function appendHandle(point: Point, target: DragTarget): void {
     dragTarget = target
     dragStart = cloneAnnotations(annotations)
     annotations = cloneAnnotations(annotations)
+    markEditingActivity()
     svg.setPointerCapture(event.pointerId)
   })
   handleLayer.append(handle)
@@ -566,6 +642,7 @@ function handleCanvasPointer(event: PointerEvent): void {
     render()
     return
   }
+  markEditingActivity()
   if (activeTool === 'wall') {
     drawingPoints.push(value)
     if (drawingPoints.length === 2) {
@@ -667,6 +744,7 @@ async function loadWorkpackFile(file: File): Promise<void> {
   imageUrl = null
   reviewTarget = null
   resetHistory(emptyAnnotations())
+  resetCorrectionTimer()
   setMessage(`工作包 ${parsed.workpackId.slice(0, 8)}… 已载入，请选择 ${parsed.image.file}`, 'success')
   render()
 }
@@ -680,6 +758,7 @@ function downloadSubmission(status: 'draft' | 'ready-for-review'): void {
       status,
       annotatedByInput.value,
       notesInput.value,
+      currentCorrectionDuration(),
     )
     const blob = new Blob([`${JSON.stringify(submission, null, 2)}\n`], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -734,6 +813,7 @@ async function loadDemo(): Promise<void> {
       imageHeightPixels: 700,
     },
     suggestions: {
+      pipelineVersion: 'opencv-axis-aligned-baseline-v1',
       coordinateSystem: 'plan-bottom-left-x-right-z-up-m',
       walls: [
         { id: 'wall-suggestion-top', start: [0, 7.366], end: [10.668, 7.366], thickness: 0.23 },
@@ -750,6 +830,7 @@ async function loadDemo(): Promise<void> {
   }
   reviewTarget = null
   resetHistory(emptyAnnotations())
+  resetCorrectionTimer()
   await verifyAndLoadImage(blob, '内置演示户型')
   setMessage('演示数据已载入：灰色虚线为机器建议，彩色几何才是真值', 'success')
 }
@@ -795,6 +876,7 @@ element<HTMLInputElement>('#draft-file').addEventListener('change', async (event
       workpack,
     )
     resetHistory(submission.annotations)
+    resetCorrectionTimer(submission.correctionSession?.durationSeconds ?? 0)
     annotatedByInput.value = submission.annotatedBy ?? ''
     notesInput.value = submission.notes
     reviewTarget = submission.annotationStatus === 'ready-for-review'
@@ -837,6 +919,7 @@ undoButton.addEventListener('click', () => {
   annotations = cloneAnnotations(history[historyIndex] as Annotations)
   reviewTarget = null
   selection = null
+  markEditingActivity()
   render()
 })
 redoButton.addEventListener('click', () => {
@@ -845,8 +928,26 @@ redoButton.addEventListener('click', () => {
   annotations = cloneAnnotations(history[historyIndex] as Annotations)
   reviewTarget = null
   selection = null
+  markEditingActivity()
   render()
 })
+
+window.addEventListener('blur', () => {
+  correctionTimer = setCorrectionTimerForeground(correctionTimer, false, performance.now())
+  renderTiming()
+})
+window.addEventListener('focus', () => {
+  correctionTimer = setCorrectionTimerForeground(correctionTimer, timerForeground(), performance.now())
+  renderTiming()
+})
+document.addEventListener('visibilitychange', () => {
+  correctionTimer = setCorrectionTimerForeground(correctionTimer, timerForeground(), performance.now())
+  renderTiming()
+})
+window.setInterval(() => {
+  correctionTimer = advanceCorrectionTimer(correctionTimer, performance.now())
+  renderTiming()
+}, 1000)
 
 window.addEventListener('keydown', (event) => {
   const target = event.target as HTMLElement | null
@@ -862,4 +963,5 @@ window.addEventListener('keydown', (event) => {
 })
 
 if (new URLSearchParams(window.location.search).get('demo') === '1') void loadDemo()
+resetCorrectionTimer()
 render()

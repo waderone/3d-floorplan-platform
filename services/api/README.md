@@ -210,6 +210,9 @@ python -m app.recognition_annotation_submission \
 工具会校验工作包/候选身份、坐标与几何范围、全局唯一 id 和交接必填字段，再输出三类真值计数。
 `ready-for-review` 不会修改工作包或自动写入评测 manifest。
 
+标注台新导出的提交还包含 `correctionSession`：算法版本必须与工作包一致，有效秒数范围为
+`(0, 7200]`。旧提交仍可用本命令和双人复核流程读取，但缺少计时会在正式晋级时被阻止。
+
 ### 双人复核与评测样本晋级
 
 复核记录和正式样本使用同一个离线工具：
@@ -221,8 +224,9 @@ python -m app.recognition_annotation_review promote --help
 ```
 
 `review` 禁止标注人自审，退回必须有说明，并将决定绑定到标注 JSON 的原始 SHA-256。`promote`
-重新验证几何、图片、工作包、复核摘要和权利批准，只输出一个带 `annotationProvenance` 的
-`EvaluationSample`，不会修改原文件或正式 manifest。完整参数见数据集 README。
+重新验证几何、图片、工作包、复核摘要、自动计时和权利批准，只输出一个带
+`annotationProvenance` 与 `correctionSessions` 的 `EvaluationSample`，不会修改原文件或正式
+manifest。完整参数见数据集 README。
 
 ## 测试
 

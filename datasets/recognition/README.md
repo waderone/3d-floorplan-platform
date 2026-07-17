@@ -39,7 +39,8 @@ Open Access 图片可以作为权利样本，但历史建筑图不能替代现�
 - 房间多边形沿内墙可用边界顺序标注，不能自相交；同时标记房间类型。
 - 门窗标注类型、中心点和净宽。
 - 尚未完成双人复核的样本使用 `annotationStatus: pending`，评测报告会明确跳过。
-- 完成人工修正后，在 `correctionSessions` 记录所用识别管线、修正秒数、复核人和日期。
+- 标注提交自动记录识别管线和前台有效修正秒数；正式晋级时映射为 `correctionSessions`，人员和
+  日期取首轮标注签名，而不是第二人几何复核签名。
 
 默认指标阈值为墙端点 0.25 米、房间 IoU 0.5、门窗中心 0.3 米、门窗宽度 0.2 米。
 报告输出墙体、房间和门窗的 precision/recall/F1，以及墙端点平均误差、房间平均 IoU 和
@@ -92,7 +93,8 @@ python -m app.recognition_annotation_workpack \
 只读参考层；只有显式复制、绘制或修改的墙体、房间、门窗和房型语义会进入导出真值。具体操作见
 `apps/annotator/README.md`。
 
-导出的 `draft` 可继续编辑；`ready-for-review` 至少需要一面墙、标注人和日期。交接前运行：
+导出的 `draft` 可继续编辑并恢复累计时间；新 `ready-for-review` 至少需要一面墙、标注人、日期和
+大于零的有效修正时间。旧的无计时提交仍可复核，但不能晋级正式样本。交接前运行：
 
 ```bash
 cd services/api
@@ -135,8 +137,9 @@ python -m app.recognition_annotation_review promote \
   --output ../../datasets/recognition/private/promoted/<candidate>-sample.json
 ```
 
-输出是可加入 `manifest.json.samples[]` 的 `EvaluationSample`，包含双人标注 provenance。工具不会
-自动修改 manifest 或提升 `datasetVersion`。私有原图、工作包、标注、review 和未发布样本不得
+输出是可加入 `manifest.json.samples[]` 的 `EvaluationSample`，包含双人标注 provenance 以及由
+首轮标注计时生成的 `correctionSessions`。工具不会自动修改 manifest 或提升 `datasetVersion`。
+私有原图、工作包、标注、review 和未发布样本不得
 因为导出而进入 Git。
 
 ## 运行评测

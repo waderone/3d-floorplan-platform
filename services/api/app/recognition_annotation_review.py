@@ -140,6 +140,8 @@ def build_evaluation_sample(
         raise ValueError("workpack does not contain a calibrated plan width")
     if submission.annotated_by is None or submission.annotated_at is None:
         raise ValueError("review-ready annotation must identify its annotator and date")
+    if submission.correction_session is None:
+        raise ValueError("promotion requires a recorded correction session")
     normalized_title = source_title.strip()
     normalized_author = source_author.strip()
     if not normalized_title or not normalized_author:
@@ -175,7 +177,14 @@ def build_evaluation_sample(
             "reviewedBy": review.reviewed_by,
             "reviewedAt": review.reviewed_at,
         },
-        correctionSessions=[],
+        correctionSessions=[
+            {
+                "pipelineVersion": submission.correction_session.pipeline_version,
+                "durationSeconds": submission.correction_session.duration_seconds,
+                "reviewer": submission.annotated_by,
+                "completedAt": submission.annotated_at,
+            }
+        ],
     )
 
 
