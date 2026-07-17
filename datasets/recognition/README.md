@@ -86,6 +86,24 @@ python -m app.recognition_annotation_workpack \
 只要权利或真值未完成，`promotionEligible` 固定为 false 并列出阻断原因。被语义筛选拒绝或
 权利拒绝的候选不能生成工作包。
 
+## 编辑与校验真值
+
+使用 `apps/annotator` 载入工作包及其原图。标注台会再次校验图片哈希和尺寸，并将机器建议保持为
+只读参考层；只有显式复制、绘制或修改的墙体、房间、门窗和房型语义会进入导出真值。具体操作见
+`apps/annotator/README.md`。
+
+导出的 `draft` 可继续编辑；`ready-for-review` 至少需要一面墙、标注人和日期。交接前运行：
+
+```bash
+cd services/api
+python -m app.recognition_annotation_submission \
+  --workpack ../../datasets/recognition/private/annotation-workpacks/<candidate>/workpack.json \
+  --annotation /path/to/<candidate>-ready-for-review.json
+```
+
+待复核不等于标注完成或权利批准。第二人复核与正式 manifest 晋级仍是后续独立流程；私有原图、
+工作包与标注文件不得因为导出而进入 Git。
+
 ## 运行评测
 
 ```bash

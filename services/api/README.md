@@ -11,6 +11,7 @@
 - EEVEE 预览/Cycles 高清渲染档位与鸟瞰、客厅、卧室多视角清单；
 - 户型图墙体/房间候选、置信度、复核原因和可视化叠加图；
 - 可审计户型评测集、墙/房间/门窗指标和人工修正时间报告；
+- 户型标注工作包与真值提交文件的离线身份、几何和交接状态校验；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -195,6 +196,19 @@ python -m app.recognition_evaluation ../../datasets/recognition/manifest.json \
 后端。报告按墙体、房间和门窗分别计算 precision/recall/F1，并记录墙端点误差、房间 IoU、
 房间语义准确率和同一 pipeline 的人工修正中位时间。`pending` 标注会明确跳过；图片损坏进入
 `invalid`，识别异常进入 `recognition_failed` 并以零预测计入召回率，不会从分母中静默消失。
+
+### 户型真值提交校验
+
+`apps/annotator` 生成的草稿或待复核 JSON 应在交接前同时提供原工作包，并用后端权威契约复核：
+
+```bash
+python -m app.recognition_annotation_submission \
+  --workpack ../../datasets/recognition/private/annotation-workpacks/<candidate>/workpack.json \
+  --annotation /path/to/<candidate>-ready-for-review.json
+```
+
+工具会校验工作包/候选身份、坐标与几何范围、全局唯一 id 和交接必填字段，再输出三类真值计数。
+`ready-for-review` 不会修改工作包或自动写入评测 manifest。
 
 ## 测试
 
