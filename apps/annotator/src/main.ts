@@ -2,6 +2,7 @@ import {
   clampMeters,
   cloneAnnotations,
   copySuggestions,
+  createAnnotationReview,
   createSubmission,
   emptyAnnotations,
   metersPerPixel,
@@ -12,6 +13,7 @@ import {
   pixelToMeters,
   sha256Hex,
   type AnnotationWorkpack,
+  type AnnotationSubmission,
   type Annotations,
   type Point,
 } from './model.ts'
@@ -44,7 +46,7 @@ root.innerHTML = `
         <button id="demo-button" class="ghost-button" type="button">载入演示</button>
         <label class="file-button">工作包<input id="workpack-file" type="file" accept="application/json,.json" /></label>
         <label class="file-button">原图<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
-        <label class="file-button secondary">载入草稿<input id="draft-file" type="file" accept="application/json,.json" /></label>
+        <label class="file-button secondary">载入标注<input id="draft-file" type="file" accept="application/json,.json" /></label>
       </div>
     </header>
 
@@ -138,6 +140,18 @@ root.innerHTML = `
           </div>
           <p class="handoff-note">“待复核”只表示首轮真值完成，不代表权利批准或正式进入评测集。</p>
         </section>
+
+        <section class="inspector-section review-section">
+          <span class="panel-label">SECOND REVIEW</span>
+          <p id="review-target" class="review-target">载入 ready-for-review 标注后可进行第二人复核。</p>
+          <label>复核人<input id="reviewed-by" type="text" maxlength="100" placeholder="必须与标注人不同" /></label>
+          <label>复核说明<textarea id="review-comment" maxlength="1000" rows="3" placeholder="退回时必须说明需要修改的内容"></textarea></label>
+          <div class="review-buttons">
+            <button id="request-changes" class="ghost-button" type="button" disabled>退回修改</button>
+            <button id="approve-review" class="primary-button" type="button" disabled>批准复核</button>
+          </div>
+          <p class="handoff-note">复核记录绑定原标注文件 SHA-256；内容变化后必须重新复核。</p>
+        </section>
       </aside>
     </div>
   </div>
@@ -168,6 +182,10 @@ const redoButton = element<HTMLButtonElement>('#redo')
 const showSuggestionsInput = element<HTMLInputElement>('#show-suggestions')
 const annotatedByInput = element<HTMLInputElement>('#annotated-by')
 const notesInput = element<HTMLTextAreaElement>('#annotation-notes')
+const reviewedByInput = element<HTMLInputElement>('#reviewed-by')
+const reviewCommentInput = element<HTMLTextAreaElement>('#review-comment')
+const requestChangesButton = element<HTMLButtonElement>('#request-changes')
+const approveReviewButton = element<HTMLButtonElement>('#approve-review')
 
 let workpack: AnnotationWorkpack | null = null
 let imageUrl: string | null = null
@@ -180,6 +198,11 @@ let history = [cloneAnnotations(annotations)]
 let historyIndex = 0
 let dragTarget: DragTarget | null = null
 let dragStart: Annotations | null = null
+let reviewTarget: {
+  submission: AnnotationSubmission
+  sha256: string
+  fileName: string
+} | null = null
 
 function setMessage(message: string, kind: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
   messageBar.dataset.kind = kind
@@ -207,6 +230,7 @@ function validateAndCommit(next: Annotations, message?: string): boolean {
     history = history.slice(0, historyIndex + 1)
     history.push(cloneAnnotations(next))
     historyIndex += 1
+    reviewTarget = null
     if (message) setMessage(message, 'success')
     render()
     return true
@@ -500,6 +524,12 @@ function render(): void {
   cancelDrawingButton.disabled = drawingPoints.length === 0
   undoButton.disabled = historyIndex === 0
   redoButton.disabled = historyIndex >= history.length - 1
+  const canReview = reviewTarget !== null && ready
+  requestChangesButton.disabled = !canReview
+  approveReviewButton.disabled = !canReview
+  element<HTMLElement>('#review-target').textContent = reviewTarget
+    ? `${reviewTarget.fileName} · 标注人 ${reviewTarget.submission.annotatedBy ?? '未知'} · SHA ${reviewTarget.sha256.slice(0, 8)}…`
+    : '载入 ready-for-review 标注后可进行第二人复核。'
   element<HTMLButtonElement>('#export-draft').disabled = !ready
   element<HTMLButtonElement>('#export-review').disabled = !ready
   if (ready) renderCanvas()
@@ -635,6 +665,7 @@ async function loadWorkpackFile(file: File): Promise<void> {
   imageVerified = false
   if (imageUrl) URL.revokeObjectURL(imageUrl)
   imageUrl = null
+  reviewTarget = null
   resetHistory(emptyAnnotations())
   setMessage(`工作包 ${parsed.workpackId.slice(0, 8)}… 已载入，请选择 ${parsed.image.file}`, 'success')
   render()
@@ -660,6 +691,30 @@ function downloadSubmission(status: 'draft' | 'ready-for-review'): void {
     setMessage(status === 'draft' ? '草稿已导出' : '待复核标注已导出', 'success')
   } catch (error) {
     setMessage(error instanceof Error ? error.message : '导出失败', 'error')
+  }
+}
+
+function downloadReview(decision: 'approved' | 'changes-requested'): void {
+  if (!workpack || !reviewTarget || !isReady()) return
+  try {
+    const review = createAnnotationReview(
+      workpack,
+      reviewTarget.submission,
+      reviewTarget.sha256,
+      decision,
+      reviewedByInput.value,
+      reviewCommentInput.value,
+    )
+    const blob = new Blob([`${JSON.stringify(review, null, 2)}\n`], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${workpack.candidateId}-review-${decision}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    setMessage(decision === 'approved' ? '复核通过记录已导出' : '退回修改记录已导出', 'success')
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : '复核记录导出失败', 'error')
   }
 }
 
@@ -693,6 +748,7 @@ async function loadDemo(): Promise<void> {
       openings: [],
     },
   }
+  reviewTarget = null
   resetHistory(emptyAnnotations())
   await verifyAndLoadImage(blob, '内置演示户型')
   setMessage('演示数据已载入：灰色虚线为机器建议，彩色几何才是真值', 'success')
@@ -712,6 +768,8 @@ root.querySelectorAll<HTMLButtonElement>('[data-import]').forEach((button) => {
 element<HTMLInputElement>('#workpack-file').addEventListener('change', async (event) => {
   const file = (event.currentTarget as HTMLInputElement).files?.[0]
   if (!file) return
+  reviewTarget = null
+  render()
   try { await loadWorkpackFile(file) } catch (error) {
     setMessage(error instanceof Error ? error.message : '工作包载入失败', 'error')
   }
@@ -719,6 +777,8 @@ element<HTMLInputElement>('#workpack-file').addEventListener('change', async (ev
 element<HTMLInputElement>('#image-file').addEventListener('change', async (event) => {
   const file = (event.currentTarget as HTMLInputElement).files?.[0]
   if (!file) return
+  imageVerified = false
+  render()
   try { await verifyAndLoadImage(file, file.name) } catch (error) {
     setMessage(error instanceof Error ? error.message : '原图载入失败', 'error')
   }
@@ -726,12 +786,24 @@ element<HTMLInputElement>('#image-file').addEventListener('change', async (event
 element<HTMLInputElement>('#draft-file').addEventListener('change', async (event) => {
   const file = (event.currentTarget as HTMLInputElement).files?.[0]
   if (!file || !workpack) return
+  reviewTarget = null
+  render()
   try {
-    const submission = parseSubmission(JSON.parse(await file.text()) as unknown, workpack)
+    const content = await file.arrayBuffer()
+    const submission = parseSubmission(
+      JSON.parse(new TextDecoder().decode(content)) as unknown,
+      workpack,
+    )
     resetHistory(submission.annotations)
     annotatedByInput.value = submission.annotatedBy ?? ''
     notesInput.value = submission.notes
-    setMessage(`${file.name} 已载入`, 'success')
+    reviewTarget = submission.annotationStatus === 'ready-for-review'
+      ? { submission, sha256: await sha256Hex(content), fileName: file.name }
+      : null
+    setMessage(
+      reviewTarget ? `${file.name} 已载入，可由第二人复核` : `${file.name} 草稿已载入`,
+      'success',
+    )
     render()
   } catch (error) {
     setMessage(error instanceof Error ? error.message : '草稿载入失败', 'error')
@@ -755,12 +827,15 @@ cancelDrawingButton.addEventListener('click', () => { drawingPoints = []; render
 deleteSelectionButton.addEventListener('click', removeSelection)
 element<HTMLButtonElement>('#export-draft').addEventListener('click', () => downloadSubmission('draft'))
 element<HTMLButtonElement>('#export-review').addEventListener('click', () => downloadSubmission('ready-for-review'))
+requestChangesButton.addEventListener('click', () => downloadReview('changes-requested'))
+approveReviewButton.addEventListener('click', () => downloadReview('approved'))
 element<HTMLButtonElement>('#demo-button').addEventListener('click', () => void loadDemo())
 element<HTMLButtonElement>('#empty-demo-button').addEventListener('click', () => void loadDemo())
 undoButton.addEventListener('click', () => {
   if (historyIndex === 0) return
   historyIndex -= 1
   annotations = cloneAnnotations(history[historyIndex] as Annotations)
+  reviewTarget = null
   selection = null
   render()
 })
@@ -768,6 +843,7 @@ redoButton.addEventListener('click', () => {
   if (historyIndex >= history.length - 1) return
   historyIndex += 1
   annotations = cloneAnnotations(history[historyIndex] as Annotations)
+  reviewTarget = null
   selection = null
   render()
 })

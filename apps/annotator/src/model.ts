@@ -59,6 +59,17 @@ export interface AnnotationSubmission {
   notes: string
 }
 
+export interface AnnotationReview {
+  schemaVersion: '1.0'
+  workpackId: string
+  candidateId: string
+  submissionSha256: string
+  decision: 'approved' | 'changes-requested'
+  reviewedBy: string
+  reviewedAt: string
+  comment: string | null
+}
+
 function record(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error(`${label} 格式无效`)
@@ -374,6 +385,43 @@ export function createSubmission(
     },
     workpack,
   )
+}
+
+export function createAnnotationReview(
+  workpack: AnnotationWorkpack,
+  submission: AnnotationSubmission,
+  submissionSha256: string,
+  decision: 'approved' | 'changes-requested',
+  reviewedBy: string,
+  comment: string,
+  date = new Date().toISOString().slice(0, 10),
+): AnnotationReview {
+  if (submission.annotationStatus !== 'ready-for-review') {
+    throw new Error('只有待复核标注可以生成复核记录')
+  }
+  if (submission.workpackId !== workpack.workpackId || submission.candidateId !== workpack.candidateId) {
+    throw new Error('待复核标注与当前工作包不匹配')
+  }
+  if (!/^[0-9a-f]{64}$/.test(submissionSha256)) throw new Error('标注文件 SHA-256 格式无效')
+  const reviewer = reviewedBy.trim()
+  if (!reviewer || reviewer.length > 100) throw new Error('请填写有效的复核人')
+  if (reviewer.toLowerCase() === (submission.annotatedBy ?? '').trim().toLowerCase()) {
+    throw new Error('标注人不能复核自己的标注')
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('复核日期格式无效')
+  const normalizedComment = comment.trim()
+  if (normalizedComment.length > 1000) throw new Error('复核说明超出长度限制')
+  if (decision === 'changes-requested' && !normalizedComment) throw new Error('退回修改必须填写原因')
+  return {
+    schemaVersion: '1.0',
+    workpackId: workpack.workpackId,
+    candidateId: workpack.candidateId,
+    submissionSha256,
+    decision,
+    reviewedBy: reviewer,
+    reviewedAt: date,
+    comment: normalizedComment || null,
+  }
 }
 
 export async function sha256Hex(content: ArrayBuffer): Promise<string> {

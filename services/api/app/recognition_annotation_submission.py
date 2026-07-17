@@ -36,6 +36,8 @@ class AnnotationSubmission(BaseModel):
 
     @model_validator(mode="after")
     def validate_annotation_state(self) -> "AnnotationSubmission":
+        if self.annotated_by is not None and not self.annotated_by.strip():
+            raise ValueError("annotator must not be blank")
         ids = [item.id for item in self.annotations.walls]
         ids.extend(item.id for item in self.annotations.rooms)
         ids.extend(item.id for item in self.annotations.openings)

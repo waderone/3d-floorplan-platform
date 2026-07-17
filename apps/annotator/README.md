@@ -35,6 +35,18 @@ python -m app.recognition_annotation_submission \
 `ready-for-review` 只表示几何已由标注人交接，不代表权利审核完成，也不会自动晋级为正式评测
 manifest。原图、工作包、草稿和导出结果应继续保存在已忽略的私有目录。
 
+## 第二人复核
+
+复核员重新载入同一工作包、原图和标注员导出的 `ready-for-review` JSON。右侧
+`SECOND REVIEW` 会显示原标注人和文件 SHA-256 摘要：
+
+- 选择“退回修改”时必须填写具体原因；
+- 选择“批准复核”时复核人必须与标注人不同；
+- 导出的 review JSON 绑定原标注文件的完整 SHA-256，标注内容发生任何变化后旧 review 都会失效。
+
+复核可以与权利审核并行进行，但只有几何复核通过且 rights 为 `approved` 时才能晋级正式评测样本。
+晋级命令及目录边界见 `datasets/recognition/README.md`。
+
 ## 验证
 
 ```bash

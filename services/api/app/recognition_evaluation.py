@@ -155,6 +155,20 @@ class EvaluationAnnotations(BaseModel):
     openings: list[EvaluationOpening] = Field(default_factory=list)
 
 
+class EvaluationAnnotationProvenance(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    workpack_id: str = Field(alias="workpackId", pattern=r"^[0-9a-f]{64}$")
+    submission_sha256: str = Field(
+        alias="submissionSha256",
+        pattern=r"^[0-9a-f]{64}$",
+    )
+    annotated_by: str = Field(alias="annotatedBy", min_length=1, max_length=100)
+    annotated_at: str = Field(alias="annotatedAt", pattern=r"^\d{4}-\d{2}-\d{2}$")
+    reviewed_by: str = Field(alias="reviewedBy", min_length=1, max_length=100)
+    reviewed_at: str = Field(alias="reviewedAt", pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
 class EvaluationSample(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -166,6 +180,10 @@ class EvaluationSample(BaseModel):
     annotation_status: Literal["pending", "complete"] = Field(alias="annotationStatus")
     source: EvaluationSource
     annotations: EvaluationAnnotations
+    annotation_provenance: EvaluationAnnotationProvenance | None = Field(
+        alias="annotationProvenance",
+        default=None,
+    )
     correction_sessions: list[EvaluationCorrectionSession] = Field(
         alias="correctionSessions",
         default_factory=list,

@@ -84,6 +84,16 @@ def test_review_ready_requires_wall_annotator_and_date() -> None:
     )
     assert ready.annotations.walls[0].id == "wall-1"
 
+    with pytest.raises(ValidationError, match="must not be blank"):
+        AnnotationSubmission.model_validate(
+            _submission(
+                annotationStatus="ready-for-review",
+                annotations=annotations,
+                annotatedBy=" ",
+                annotatedAt="2026-07-17",
+            )
+        )
+
 
 def test_submission_rejects_duplicate_geometry_ids() -> None:
     annotations = _submission()["annotations"]

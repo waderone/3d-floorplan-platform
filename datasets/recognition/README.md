@@ -101,8 +101,43 @@ python -m app.recognition_annotation_submission \
   --annotation /path/to/<candidate>-ready-for-review.json
 ```
 
-待复核不等于标注完成或权利批准。第二人复核与正式 manifest 晋级仍是后续独立流程；私有原图、
-工作包与标注文件不得因为导出而进入 Git。
+待复核不等于标注完成或权利批准。复核员可在标注台载入同一工作包、原图和待复核 JSON，导出
+绑定原标注 SHA-256 的 `approved` 或 `changes-requested` review。也可用 CLI 生成：
+
+```bash
+python -m app.recognition_annotation_review review \
+  --workpack ../../datasets/recognition/private/annotation-workpacks/<candidate>/workpack.json \
+  --annotation /path/to/<candidate>-ready-for-review.json \
+  --decision approved \
+  --reviewed-by reviewer-b \
+  --reviewed-at 2026-07-17 \
+  --output /path/to/<candidate>-review-approved.json
+```
+
+标注人不能复核自己的提交；`changes-requested` 还必须传入 `--comment`。标注文件变化后旧 review
+摘要不再匹配，必须重新复核。
+
+权利已人工批准、图片已按存储模式放入数据集目录且 review 通过后，生成单个正式样本：
+
+```bash
+python -m app.recognition_annotation_review promote \
+  --workpack ../../datasets/recognition/private/annotation-workpacks/<candidate>/workpack.json \
+  --annotation /path/to/<candidate>-ready-for-review.json \
+  --review /path/to/<candidate>-review-approved.json \
+  --candidate-reviews ../../datasets/recognition/candidate-reviews.json \
+  --dataset-root ../../datasets/recognition \
+  --sample-id <sanitized-sample-id> \
+  --image-path private/<candidate>.png \
+  --split calibration \
+  --storage-mode local-only \
+  --source-title "Sanitized source title" \
+  --source-author "Verified source author" \
+  --output ../../datasets/recognition/private/promoted/<candidate>-sample.json
+```
+
+输出是可加入 `manifest.json.samples[]` 的 `EvaluationSample`，包含双人标注 provenance。工具不会
+自动修改 manifest 或提升 `datasetVersion`。私有原图、工作包、标注、review 和未发布样本不得
+因为导出而进入 Git。
 
 ## 运行评测
 

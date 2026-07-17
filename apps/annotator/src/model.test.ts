@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   copySuggestions,
+  createAnnotationReview,
   createSubmission,
   emptyAnnotations,
   metersToPixel,
@@ -108,5 +109,52 @@ test('rejects malformed identities and values beyond backend limits', () => {
   assert.throws(
     () => createSubmission(workpack, outside, 'draft', '', ''),
     /超出已标定户型边界/,
+  )
+})
+
+test('creates a bound second-person review and rejects self-review', () => {
+  const workpack = parseWorkpack(workpackValue())
+  const annotations = copySuggestions(workpack, emptyAnnotations(), ['walls'])
+  const submission = createSubmission(
+    workpack,
+    annotations,
+    'ready-for-review',
+    'annotator-a',
+    '',
+    '2026-07-17',
+  )
+  const review = createAnnotationReview(
+    workpack,
+    submission,
+    'c'.repeat(64),
+    'approved',
+    'reviewer-b',
+    '',
+    '2026-07-17',
+  )
+
+  assert.equal(review.submissionSha256, 'c'.repeat(64))
+  assert.equal(review.reviewedBy, 'reviewer-b')
+  assert.throws(
+    () => createAnnotationReview(
+      workpack,
+      submission,
+      'c'.repeat(64),
+      'approved',
+      'ANNOTATOR-A',
+      '',
+    ),
+    /不能复核自己的标注/,
+  )
+  assert.throws(
+    () => createAnnotationReview(
+      workpack,
+      submission,
+      'c'.repeat(64),
+      'changes-requested',
+      'reviewer-b',
+      ' ',
+    ),
+    /必须填写原因/,
   )
 })

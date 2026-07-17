@@ -101,6 +101,26 @@
         "openings": {"type": "array", "items": {"$ref": "#/$defs/opening"}}
       }
     },
+    "annotationProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workpackId",
+        "submissionSha256",
+        "annotatedBy",
+        "annotatedAt",
+        "reviewedBy",
+        "reviewedAt"
+      ],
+      "properties": {
+        "workpackId": {"$ref": "#/$defs/sha256"},
+        "submissionSha256": {"$ref": "#/$defs/sha256"},
+        "annotatedBy": {"type": "string", "minLength": 1, "maxLength": 100},
+        "annotatedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "reviewedBy": {"type": "string", "minLength": 1, "maxLength": 100},
+        "reviewedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      }
+    },
     "correctionSession": {
       "type": "object",
       "additionalProperties": false,
@@ -134,6 +154,7 @@
         "annotationStatus": {"enum": ["pending", "complete"]},
         "source": {"$ref": "#/$defs/source"},
         "annotations": {"$ref": "#/$defs/annotations"},
+        "annotationProvenance": {"$ref": "#/$defs/annotationProvenance"},
         "correctionSessions": {
           "type": "array",
           "items": {"$ref": "#/$defs/correctionSession"}
