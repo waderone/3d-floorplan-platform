@@ -66,10 +66,10 @@ def test_layout_is_deterministic_and_furnishes_three_room_types() -> None:
     assert first == second
     assert first.status == "ready"
     assert first.selected_room_id == "zone_living"
-    assert len(first.placements) == 13
+    assert len(first.placements) == 16
     assert set(first.furnished_room_ids) == {"zone_living", "zone_dining", "zone_bedroom"}
     assert {placement.room_id for placement in first.placements} == set(first.furnished_room_ids)
-    assert first.referenced_asset_bytes == 55_668
+    assert first.referenced_asset_bytes == 4_318_976
     assert first.mobile_asset_budget_exceeded is False
     assert len(first.layout_id) == 64
 

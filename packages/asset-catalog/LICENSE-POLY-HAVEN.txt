@@ -1,0 +1,11 @@
+Poly Haven asset notice
+
+The Poly Haven assets embedded in this catalog are made available under the
+Creative Commons CC0 1.0 Universal Public Domain Dedication.
+
+Asset pages, authors, fixed source snapshots, and delivery hashes are recorded
+in catalog.json. The authoritative current license text is available at:
+https://polyhaven.com/license
+
+CC0 1.0 legal code:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode

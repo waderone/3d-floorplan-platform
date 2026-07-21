@@ -303,6 +303,7 @@ def create_catalog_model(
     catalog_path: Path,
     floor_top: float,
     soften_edges: bool,
+    style_material: bpy.types.Material,
 ) -> list[bpy.types.Object]:
     delivery = asset.get("delivery")
     if asset.get("kind") != "model" or not isinstance(delivery, dict):
@@ -338,6 +339,39 @@ def create_catalog_model(
         x, y, z = (float(value) for value in placement["position"])
         root.location = (x, z, floor_top + y - height / 2)
         root.rotation_euler[2] = math.radians(float(placement["rotationYDegrees"]))
+        material_mode = asset.get("materialMode", "replace")
+        if material_mode == "replace":
+            for mesh in meshes:
+                apply_material(mesh, style_material)
+        elif material_mode == "tint":
+            tint = style_material.diffuse_color
+            for mesh in meshes:
+                for imported_material in mesh.data.materials:
+                    if imported_material is None or not imported_material.use_nodes:
+                        continue
+                    principled = imported_material.node_tree.nodes.get("Principled BSDF")
+                    if principled is None:
+                        continue
+                    base_color = principled.inputs.get("Base Color")
+                    if base_color is None:
+                        continue
+                    if base_color.is_linked:
+                        source_socket = base_color.links[0].from_socket
+                        imported_material.node_tree.links.remove(base_color.links[0])
+                        multiply = imported_material.node_tree.nodes.new("ShaderNodeMixRGB")
+                        multiply.blend_type = "MULTIPLY"
+                        multiply.inputs[0].default_value = 1
+                        multiply.inputs[2].default_value = tint
+                        imported_material.node_tree.links.new(source_socket, multiply.inputs[1])
+                        imported_material.node_tree.links.new(multiply.outputs[0], base_color)
+                    else:
+                        current = base_color.default_value
+                        base_color.default_value = (
+                            current[0] * tint[0],
+                            current[1] * tint[1],
+                            current[2] * tint[2],
+                            current[3],
+                        )
         return meshes
     except Exception:
         for obj in [obj for obj in bpy.context.scene.objects if obj not in before]:
@@ -570,6 +604,7 @@ def configure_scene(
             catalog_path,
             floor_top,
             soften_edges=profile["engine"] == "CYCLES",
+            style_material=materials[placement["role"]],
         )
         if model_meshes:
             furniture_meshes.extend(model_meshes)

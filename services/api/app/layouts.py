@@ -429,7 +429,7 @@ def generate_layout(
                 role=entry.role,
                 collisionMode=entry.collision_mode,
                 position=entry.position,
-                size=asset_catalog.assets[entry.asset_id].canonical_size,
+                size=entry.size or asset_catalog.assets[entry.asset_id].canonical_size,
                 rotationYDegrees=entry.rotation_y_degrees,
             )
             for entry in recipe

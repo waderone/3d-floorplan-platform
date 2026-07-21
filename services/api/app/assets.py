@@ -19,9 +19,10 @@ class CatalogLicense(BaseModel):
     local_notice: str = Field(alias="localNotice")
 
 
-class SourcePackage(BaseModel):
+class CatalogSource(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     name: str
     site_version: str = Field(alias="siteVersion")
     embedded_version: str = Field(alias="embeddedVersion")
@@ -37,7 +38,7 @@ class AssetDelivery(BaseModel):
 
     url: str = Field(pattern=r"^/catalog-assets/models/[a-z0-9-]+\.glb$")
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    bytes: int = Field(gt=0, le=2 * 1024 * 1024)
+    bytes: int = Field(gt=0, le=3 * 1024 * 1024)
 
 
 class AssetFallback(BaseModel):
@@ -53,10 +54,16 @@ class CatalogAsset(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     kind: Literal["model", "procedural"]
     room_types: list[RoomType] = Field(alias="roomTypes", min_length=1)
+    source_id: str | None = Field(
+        alias="sourceId", default=None, pattern=r"^[a-z0-9][a-z0-9-]{0,63}$"
+    )
     source_entry: str | None = Field(alias="sourceEntry", default=None)
     source_sha256: str | None = Field(alias="sourceSha256", default=None)
     source_material_sha256: str | None = Field(alias="sourceMaterialSha256", default=None)
     canonical_size: tuple[float, float, float] = Field(alias="canonicalSize")
+    material_mode: Literal["replace", "tint", "preserve"] = Field(
+        alias="materialMode", default="replace"
+    )
     delivery: AssetDelivery | None = None
     fallback: AssetFallback
 
@@ -64,15 +71,17 @@ class CatalogAsset(BaseModel):
     def validate_kind(self) -> "CatalogAsset":
         if any(value <= 0 for value in self.canonical_size):
             raise ValueError("asset canonical size values must be positive")
-        source_values = (
+        required_source_values = (
+            self.source_id,
             self.source_entry,
             self.source_sha256,
-            self.source_material_sha256,
             self.delivery,
         )
-        if self.kind == "model" and any(value is None for value in source_values):
+        if self.kind == "model" and any(value is None for value in required_source_values):
             raise ValueError("model assets require audited source and delivery metadata")
-        if self.kind == "procedural" and any(value is not None for value in source_values):
+        if self.kind == "procedural" and any(
+            value is not None for value in (*required_source_values, self.source_material_sha256)
+        ):
             raise ValueError("procedural assets cannot declare external source or delivery")
         return self
 
@@ -86,17 +95,24 @@ class RoomRecipePlacement(BaseModel):
     role: str = Field(pattern=r"^[a-z][a-z0-9-]{0,31}$")
     collision_mode: Literal["solid", "surface"] = Field(alias="collisionMode")
     position: tuple[float, float, float]
+    size: tuple[float, float, float] | None = None
     rotation_y_degrees: float = Field(alias="rotationYDegrees", ge=-360, le=360)
+
+    @model_validator(mode="after")
+    def validate_size(self) -> "RoomRecipePlacement":
+        if self.size is not None and any(value <= 0 for value in self.size):
+            raise ValueError("recipe size values must be positive")
+        return self
 
 
 class AssetCatalogManifest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    schema_version: Literal["2.0"] = Field(alias="schemaVersion")
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     version: int = Field(ge=1)
     mobile_budget_bytes: int = Field(alias="mobileBudgetBytes", gt=0)
-    source_package: SourcePackage = Field(alias="sourcePackage")
+    sources: list[CatalogSource] = Field(min_length=1)
     assets: list[CatalogAsset] = Field(min_length=1)
     room_recipes: dict[Literal["living", "dining", "bedroom"], list[RoomRecipePlacement]] = Field(
         alias="roomRecipes"
@@ -104,10 +120,17 @@ class AssetCatalogManifest(BaseModel):
 
     @model_validator(mode="after")
     def validate_references(self) -> "AssetCatalogManifest":
+        source_ids = [source.id for source in self.sources]
+        if len(source_ids) != len(set(source_ids)):
+            raise ValueError("catalog source ids must be unique")
+        known_source_ids = set(source_ids)
         asset_ids = [asset.id for asset in self.assets]
         if len(asset_ids) != len(set(asset_ids)):
             raise ValueError("catalog asset ids must be unique")
         assets = {asset.id: asset for asset in self.assets}
+        for asset in self.assets:
+            if asset.source_id is not None and asset.source_id not in known_source_ids:
+                raise ValueError(f"asset references missing source: {asset.source_id}")
         for room_type in ("living", "dining", "bedroom"):
             recipe = self.room_recipes.get(room_type)
             if not recipe:
@@ -140,6 +163,10 @@ class AssetCatalog:
         return self.directory / "models"
 
     def _validate_files(self) -> None:
+        for source in self.manifest.sources:
+            notice = self.directory / source.license.local_notice
+            if not notice.is_file():
+                raise ValueError(f"catalog license notice is missing: {source.id}")
         for asset in self.manifest.assets:
             if asset.delivery is None:
                 continue

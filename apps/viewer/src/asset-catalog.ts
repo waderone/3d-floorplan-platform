@@ -6,12 +6,13 @@ export interface CatalogAsset {
   kind: 'model' | 'procedural'
   roomTypes: RoomType[]
   canonicalSize: [number, number, number]
+  materialMode: 'replace' | 'tint' | 'preserve'
   delivery?: { url: string; sha256: string; bytes: number }
   fallback: { kind: PrimitiveKind; materialRole: string }
 }
 
 export interface AssetCatalog {
-  schemaVersion: '1.0'
+  schemaVersion: '2.0'
   id: string
   version: number
   mobileBudgetBytes: number
@@ -33,7 +34,7 @@ function isPositiveVector(value: unknown): value is [number, number, number] {
 export function parseAssetCatalog(value: unknown): AssetCatalog {
   if (
     !isRecord(value) ||
-    value.schemaVersion !== '1.0' ||
+    value.schemaVersion !== '2.0' ||
     typeof value.id !== 'string' ||
     !Number.isInteger(value.version) ||
     typeof value.mobileBudgetBytes !== 'number' ||
@@ -50,6 +51,12 @@ export function parseAssetCatalog(value: unknown): AssetCatalog {
       !(asset.kind === 'model' || asset.kind === 'procedural') ||
       !Array.isArray(asset.roomTypes) ||
       !isPositiveVector(asset.canonicalSize) ||
+      !(
+        asset.materialMode === undefined ||
+        asset.materialMode === 'replace' ||
+        asset.materialMode === 'tint' ||
+        asset.materialMode === 'preserve'
+      ) ||
       !isRecord(asset.fallback) ||
       !(asset.fallback.kind === 'box' ||
         asset.fallback.kind === 'cylinder' ||
@@ -72,7 +79,7 @@ export function parseAssetCatalog(value: unknown): AssetCatalog {
         throw new Error('真实资产交付元数据无效')
       }
     }
-    return asset as unknown as CatalogAsset
+    return { ...asset, materialMode: asset.materialMode ?? 'replace' } as unknown as CatalogAsset
   })
   return { ...value, assets } as unknown as AssetCatalog
 }

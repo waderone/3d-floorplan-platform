@@ -1,27 +1,91 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 1,
-  "mobileBudgetBytes": 2097152,
-  "sourcePackage": {
-    "name": "Kenney Furniture Kit",
-    "siteVersion": "1.0",
-    "embeddedVersion": "2.0",
-    "author": "Kenney",
-    "sourceUrl": "https://kenney.nl/assets/furniture-kit",
-    "downloadUrl": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
-    "sha256": "e67652d0932cee41683f74711c03d3e192a2af9979ef8e6b237711f5482d46b0",
-    "license": {
-      "spdx": "CC0-1.0",
-      "url": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "localNotice": "LICENSE-KENNEY.txt"
+  "version": 2,
+  "mobileBudgetBytes": 5242880,
+  "sources": [
+    {
+      "id": "kenney-furniture-kit",
+      "name": "Kenney Furniture Kit",
+      "siteVersion": "1.0",
+      "embeddedVersion": "2.0",
+      "author": "Kenney",
+      "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+      "downloadUrl": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
+      "sha256": "e67652d0932cee41683f74711c03d3e192a2af9979ef8e6b237711f5482d46b0",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "localNotice": "LICENSE-KENNEY.txt"
+      }
+    },
+    {
+      "id": "polyhaven-modern-arm-chair-01-1k",
+      "name": "Modern Arm Chair 01",
+      "siteVersion": "2022-10-31",
+      "embeddedVersion": "1k-gltf",
+      "author": "Vibrant Nordic",
+      "sourceUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_arm_chair_01/modern_arm_chair_01_1k.gltf",
+      "sha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-sofa-01-1k",
+      "name": "Sofa 01",
+      "siteVersion": "2020-03-31",
+      "embeddedVersion": "1k-gltf",
+      "author": "Kirill Sannikov",
+      "sourceUrl": "https://polyhaven.com/a/Sofa_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/Sofa_01/Sofa_01_1k.gltf",
+      "sha256": "dc9d331a24fc8994606ae5a283826cb28feb3166782f59d006d0f10cc92cc830",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-gothic-bed-01-1k",
+      "name": "Gothic Bed 01",
+      "siteVersion": "2020-03-31",
+      "embeddedVersion": "1k-gltf",
+      "author": "Kirill Sannikov",
+      "sourceUrl": "https://polyhaven.com/a/GothicBed_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/GothicBed_01/GothicBed_01_1k.gltf",
+      "sha256": "67df189dd3a645936827f3cc123fb9e97ca9d2201d1e4090762bf477cab82fc0",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-modern-ceiling-lamp-01-1k",
+      "name": "Modern Ceiling Lamp 01",
+      "siteVersion": "2021-06-15",
+      "embeddedVersion": "1k-gltf",
+      "author": "James Ray Cock",
+      "sourceUrl": "https://polyhaven.com/a/modern_ceiling_lamp_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_ceiling_lamp_01/modern_ceiling_lamp_01_1k.gltf",
+      "sha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
     }
-  },
+  ],
   "assets": [
     {
       "id": "kenney-lounge-sofa",
       "kind": "model",
       "roomTypes": ["living"],
+      "sourceId": "kenney-furniture-kit",
       "sourceEntry": "Models/OBJ format/loungeDesignSofa.obj",
       "sourceSha256": "0f5b9820b616db3f9ce4ff018eeb4088343c1fc32216df87dc34b9e0d74fea49",
       "sourceMaterialSha256": "a493fa76745d752d4f10d93e1b07f2558a56a79e6a05536c4b8815a0f16391da",
@@ -37,6 +101,7 @@
       "id": "kenney-coffee-table",
       "kind": "model",
       "roomTypes": ["living"],
+      "sourceId": "kenney-furniture-kit",
       "sourceEntry": "Models/OBJ format/tableCoffee.obj",
       "sourceSha256": "a50abcd31f11b424d278756d65734193453030cf4a7c6966459e03150858885b",
       "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
@@ -52,6 +117,7 @@
       "id": "kenney-dining-table-round",
       "kind": "model",
       "roomTypes": ["dining"],
+      "sourceId": "kenney-furniture-kit",
       "sourceEntry": "Models/OBJ format/tableRound.obj",
       "sourceSha256": "86229eabad9489986d6f8a3cec816ac839d402d0e46e6894767d9e03493cb16e",
       "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
@@ -67,6 +133,7 @@
       "id": "kenney-dining-chair",
       "kind": "model",
       "roomTypes": ["dining"],
+      "sourceId": "kenney-furniture-kit",
       "sourceEntry": "Models/OBJ format/chair.obj",
       "sourceSha256": "73b0cc678606b37302bfb66192a007855ce9a7826f8824e04e75f8a413a82f02",
       "sourceMaterialSha256": "eb2bffff6262d9b032d9ae1de51467559b6a03da66cd68ac5ecd34ecd004c0c5",
@@ -82,6 +149,7 @@
       "id": "kenney-bed-double",
       "kind": "model",
       "roomTypes": ["bedroom"],
+      "sourceId": "kenney-furniture-kit",
       "sourceEntry": "Models/OBJ format/bedDouble.obj",
       "sourceSha256": "965391d067fdb1604a06fc0c0a745976dc34b3d13d0bc9043328cdccc9588330",
       "sourceMaterialSha256": "c68f3b5128ae18ed9a1723a1363b1c56cbbb17ae12de246de26af761ec822fc0",
@@ -92,6 +160,70 @@
         "bytes": 20948
       },
       "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "polyhaven-modern-arm-chair-01",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-modern-arm-chair-01-1k",
+      "sourceEntry": "1k/modern_arm_chair_01_1k.gltf",
+      "sourceSha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a",
+      "canonicalSize": [0.820344, 1.022852, 0.986562],
+      "materialMode": "tint",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-modern-arm-chair-01.glb",
+        "sha256": "7aa88f1894120d5c85f862e66acc64bd614dd4fe764723269bb1812d508dc75d",
+        "bytes": 2701416
+      },
+      "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "polyhaven-sofa-01",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-sofa-01-1k",
+      "sourceEntry": "1k/Sofa_01_1k.gltf",
+      "sourceSha256": "dc9d331a24fc8994606ae5a283826cb28feb3166782f59d006d0f10cc92cc830",
+      "canonicalSize": [1.571468, 0.796515, 0.658015],
+      "materialMode": "tint",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-sofa-01.glb",
+        "sha256": "b169f3c20143f2c740f7da7661c6365fced7d57613ef01f8a3575c9f9f53dda0",
+        "bytes": 517420
+      },
+      "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "polyhaven-gothic-bed-01",
+      "kind": "model",
+      "roomTypes": ["bedroom"],
+      "sourceId": "polyhaven-gothic-bed-01-1k",
+      "sourceEntry": "1k/GothicBed_01_1k.gltf",
+      "sourceSha256": "67df189dd3a645936827f3cc123fb9e97ca9d2201d1e4090762bf477cab82fc0",
+      "canonicalSize": [1.493752, 1.53384, 2.04],
+      "materialMode": "tint",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-gothic-bed-01.glb",
+        "sha256": "ffa6aa8b1c2763873a010d744fe2674386ba8e5283bf3b094f123415b21b208c",
+        "bytes": 1158624
+      },
+      "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "polyhaven-modern-ceiling-lamp-01",
+      "kind": "model",
+      "roomTypes": ["living", "bedroom"],
+      "sourceId": "polyhaven-modern-ceiling-lamp-01-1k",
+      "sourceEntry": "1k/modern_ceiling_lamp_01_1k.gltf",
+      "sourceSha256": "f88b5d0a81fa813457a77474e7e4e812f97ad5fac2109ba03ddb183274be3f8c",
+      "canonicalSize": [0.431649, 0.951551, 0.431661],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-modern-ceiling-lamp-01.glb",
+        "sha256": "ea023ca5df0e1ecf8dd42131ce12abcbd6afaf3ef4edc67c9acd6c59703d54d9",
+        "bytes": 433984
+      },
+      "fallback": {"kind": "sphere", "materialRole": "ceramic"}
     },
     {
       "id": "project-rug",
@@ -117,10 +249,12 @@
   ],
   "roomRecipes": {
     "living": [
-      {"id": "living-sofa", "itemId": "living-sofa", "assetId": "kenney-lounge-sofa", "role": "fabric", "collisionMode": "solid", "position": [0, 0.4, 1.45], "rotationYDegrees": 0},
+      {"id": "living-chair-east", "itemId": "living-chair-east", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [0.68, 0.511426, 1.35], "rotationYDegrees": -10},
+      {"id": "living-chair-west", "itemId": "living-chair-west", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [-0.68, 0.511426, 1.35], "rotationYDegrees": 10},
       {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "kenney-coffee-table", "role": "wood", "collisionMode": "solid", "position": [0, 0.23, -0.1], "rotationYDegrees": 0},
       {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "project-sideboard", "role": "wood", "collisionMode": "solid", "position": [0, 0.42, -1.55], "rotationYDegrees": 0},
-      {"id": "living-rug", "itemId": "living-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.25], "rotationYDegrees": 0}
+      {"id": "living-rug", "itemId": "living-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.25], "rotationYDegrees": 0},
+      {"id": "living-pendant", "itemId": "living-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.25], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
     ],
     "dining": [
       {"id": "dining-table", "itemId": "dining-table", "assetId": "kenney-dining-table-round", "role": "wood", "collisionMode": "solid", "position": [0, 0.366734, 0], "rotationYDegrees": 0},
@@ -130,10 +264,11 @@
       {"id": "dining-chair-west", "itemId": "dining-chair-west", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [-1.25, 0.47, 0], "rotationYDegrees": 90}
     ],
     "bedroom": [
-      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "kenney-bed-double", "role": "fabric", "collisionMode": "solid", "position": [0, 0.375, 0.4], "rotationYDegrees": 0},
+      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "polyhaven-gothic-bed-01", "role": "fabric", "collisionMode": "solid", "position": [0, 0.76692, 0.4], "rotationYDegrees": 0},
       {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [1.42, 0.3, 0.2], "rotationYDegrees": 0},
       {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.42, 0.3, 0.2], "rotationYDegrees": 0},
-      {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0}
+      {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0},
+      {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.3], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
     ]
   }
 }

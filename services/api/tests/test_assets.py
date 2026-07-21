@@ -16,15 +16,24 @@ CATALOG_DIRECTORY = ROOT / "packages" / "asset-catalog"
 def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     catalog = AssetCatalog(CATALOG_DIRECTORY / "catalog.json")
 
-    assert catalog.manifest.source_package.license.spdx == "CC0-1.0"
-    assert catalog.manifest.source_package.site_version == "1.0"
-    assert catalog.manifest.source_package.embedded_version == "2.0"
+    assert {source.id for source in catalog.manifest.sources} == {
+        "kenney-furniture-kit",
+        "polyhaven-modern-arm-chair-01-1k",
+        "polyhaven-sofa-01-1k",
+        "polyhaven-gothic-bed-01-1k",
+        "polyhaven-modern-ceiling-lamp-01-1k",
+    }
+    assert {source.license.spdx for source in catalog.manifest.sources} == {"CC0-1.0"}
     assert set(catalog.manifest.room_recipes) == {"living", "dining", "bedroom"}
     model_bytes = sum(
         asset.delivery.bytes for asset in catalog.manifest.assets if asset.delivery is not None
     )
-    assert model_bytes == 55_668
+    assert model_bytes == 4_867_112
     assert model_bytes < catalog.manifest.mobile_budget_bytes
+    assert catalog.assets["polyhaven-sofa-01"].material_mode == "tint"
+    assert catalog.assets["polyhaven-modern-arm-chair-01"].material_mode == "tint"
+    assert catalog.assets["polyhaven-modern-ceiling-lamp-01"].material_mode == "preserve"
+    assert catalog.recipe("living")[-1].size == (0.32, 0.7, 0.32)
 
 
 def test_catalog_rejects_missing_recipe_asset() -> None:
@@ -35,6 +44,14 @@ def test_catalog_rejects_missing_recipe_asset() -> None:
         AssetCatalogManifest.model_validate(value)
 
 
+def test_catalog_rejects_missing_asset_source() -> None:
+    value = json.loads((CATALOG_DIRECTORY / "catalog.json").read_text(encoding="utf-8"))
+    value["assets"][0]["sourceId"] = "missing"
+
+    with pytest.raises(ValueError, match="missing source"):
+        AssetCatalogManifest.model_validate(value)
+
+
 def test_catalog_rejects_tampered_model(tmp_path: Path) -> None:
     copied = tmp_path / "asset-catalog"
     shutil.copytree(CATALOG_DIRECTORY, copied)
@@ -42,4 +59,13 @@ def test_catalog_rejects_tampered_model(tmp_path: Path) -> None:
     model.write_bytes(model.read_bytes() + b"tampered")
 
     with pytest.raises(ValueError, match="byte count changed"):
+        AssetCatalog(copied / "catalog.json")
+
+
+def test_catalog_rejects_missing_license_notice(tmp_path: Path) -> None:
+    copied = tmp_path / "asset-catalog"
+    shutil.copytree(CATALOG_DIRECTORY, copied)
+    (copied / "LICENSE-POLY-HAVEN.txt").unlink()
+
+    with pytest.raises(ValueError, match="license notice is missing"):
         AssetCatalog(copied / "catalog.json")

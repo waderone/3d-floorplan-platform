@@ -392,9 +392,17 @@ async function loadCatalogModel(
     }
     for (const mesh of assetContainer.meshes) {
       if (mesh.getTotalVertices() === 0) continue
-      mesh.material = material
+      if (asset.materialMode === 'replace') mesh.material = material
       mesh.receiveShadows = true
       shadows.addShadowCaster(mesh, true)
+    }
+    if (asset.materialMode === 'tint') {
+      for (const importedMaterial of assetContainer.materials) {
+        if (importedMaterial instanceof PBRMaterial) {
+          importedMaterial.albedoColor = importedMaterial.albedoColor.multiply(material.albedoColor)
+          importedMaterial.environmentIntensity = material.environmentIntensity
+        }
+      }
     }
     assetContainer.addAllToScene()
     styledAssetContainers.push(assetContainer)
