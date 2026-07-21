@@ -65,6 +65,44 @@ python -m app.recognition_candidates \
 下载使用 1024 像素标准缩略图、有限 429/503 重试和可恢复文件；单项失败会写入队列后返回失败，
 再次运行只补缺失文件。人工需要继续排除立面、剖面、多页拼图、比例不明和非现代住宅样本。
 
+## 批量生产看板
+
+真实作业统一放在已忽略的生产根目录，每个候选使用以下文件名：
+
+```text
+private/annotation-workpacks/<candidate-id>/
+├── workpack.json
+├── overlay.png
+├── annotation.json
+├── review.json
+└── sample.json
+```
+
+为人工筛选已通过且权利未拒绝的候选准备缺失工作包：
+
+```bash
+cd services/api
+python -m app.recognition_sample_production prepare \
+  --queue ../../datasets/recognition/private/commons-candidates/queue.json \
+  --reviews ../../datasets/recognition/candidate-reviews.example.json \
+  --image-dir ../../datasets/recognition/private/commons-candidates/images \
+  --production-root ../../datasets/recognition/private/annotation-workpacks
+```
+
+生成生产状态报告：
+
+```bash
+python -m app.recognition_sample_production status \
+  --queue ../../datasets/recognition/private/commons-candidates/queue.json \
+  --reviews ../../datasets/recognition/candidate-reviews.example.json \
+  --image-dir ../../datasets/recognition/private/commons-candidates/images \
+  --production-root ../../datasets/recognition/private/annotation-workpacks \
+  --output ../../datasets/recognition/private/annotation-workpacks/production-report.json
+```
+
+报告会重新校验各阶段契约，并输出确定性 `reportId`、阶段计数、下一动作和阻断码。`prepare` 不会
+覆盖仍有效的工作包，也不会自动批准权利、生成真值或代签人员身份。
+
 ## 生成标注工作包
 
 `candidate-reviews.example.json` 展示语义筛选和权利审核的独立记录。内容类型、目标域、选择原因、

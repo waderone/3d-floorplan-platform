@@ -12,6 +12,7 @@
 - 户型图墙体/房间候选、置信度、复核原因和可视化叠加图；
 - 可审计户型评测集、墙/房间/门窗指标和人工修正时间报告；
 - 户型标注工作包与真值提交文件的离线身份、几何和交接状态校验；
+- 真实评测样本的批量生产看板、状态审计和已筛选工作包准备；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -227,6 +228,17 @@ python -m app.recognition_annotation_review promote --help
 重新验证几何、图片、工作包、复核摘要、自动计时和权利批准，只输出一个带
 `annotationProvenance` 与 `correctionSessions` 的 `EvaluationSample`，不会修改原文件或正式
 manifest。完整参数见数据集 README。
+
+### 真实样本生产看板
+
+```bash
+python -m app.recognition_sample_production --help
+python -m app.recognition_sample_production prepare --help
+python -m app.recognition_sample_production status --help
+```
+
+`prepare` 只生成缺失的已筛选候选工作包；`status` 重新验证图片、工作包、标注、复核、权利与
+正式样本，并输出确定性阶段报告。目录约定和完整命令见数据集 README。
 
 ## 测试
 
