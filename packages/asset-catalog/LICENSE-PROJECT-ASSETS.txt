@@ -1,0 +1,6 @@
+CC0 1.0 Universal
+
+The project-original generated assets identified by this notice are dedicated to the public
+domain under CC0 1.0 Universal by the 3D Floorplan Platform contributors.
+
+License text and legal code: https://creativecommons.org/publicdomain/zero/1.0/

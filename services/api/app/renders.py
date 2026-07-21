@@ -71,6 +71,14 @@ class RenderManifest(BaseModel):
     render_seconds: float | None = Field(alias="renderSeconds", default=None, ge=0)
     real_asset_placements: int | None = Field(alias="realAssetPlacements", default=None, ge=0)
     fallback_placements: int | None = Field(alias="fallbackPlacements", default=None, ge=0)
+    opening_count: int | None = Field(alias="openingCount", default=None, ge=0)
+    ignored_opening_count: int | None = Field(alias="ignoredOpeningCount", default=None, ge=0)
+    opening_blocked_room_count: int | None = Field(
+        alias="openingBlockedRoomCount", default=None, ge=0
+    )
+    opening_clearance_validated: bool | None = Field(
+        alias="openingClearanceValidated", default=None
+    )
     error: str | None = None
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
@@ -307,6 +315,10 @@ class RenderStore:
             render_seconds = report.get("renderSeconds")
             real_asset_placements = report.get("realAssetPlacements")
             fallback_placements = report.get("fallbackPlacements")
+            opening_count = report.get("openingCount")
+            ignored_opening_count = report.get("ignoredOpeningCount")
+            opening_blocked_room_count = report.get("openingBlockedRoomCount")
+            opening_clearance_validated = report.get("openingClearanceValidated")
             reported_views = report.get("views")
             if (
                 not isinstance(engine, str)
@@ -324,6 +336,16 @@ class RenderStore:
                 or not isinstance(fallback_placements, int)
                 or isinstance(fallback_placements, bool)
                 or fallback_placements < 0
+                or not isinstance(opening_count, int)
+                or isinstance(opening_count, bool)
+                or opening_count < 0
+                or not isinstance(ignored_opening_count, int)
+                or isinstance(ignored_opening_count, bool)
+                or ignored_opening_count < 0
+                or not isinstance(opening_blocked_room_count, int)
+                or isinstance(opening_blocked_room_count, bool)
+                or opening_blocked_room_count < 0
+                or opening_clearance_validated is not True
                 or report.get("assetCatalogId") != manifest.asset_catalog.id
                 or report.get("assetCatalogVersion") != manifest.asset_catalog.version
                 or report.get("profileId") != manifest.profile.id
@@ -379,6 +401,10 @@ class RenderStore:
                     "render_seconds": float(render_seconds),
                     "real_asset_placements": real_asset_placements,
                     "fallback_placements": fallback_placements,
+                    "opening_count": opening_count,
+                    "ignored_opening_count": ignored_opening_count,
+                    "opening_blocked_room_count": opening_blocked_room_count,
+                    "opening_clearance_validated": opening_clearance_validated,
                     "error": None,
                     "updated_at": _utcnow(),
                 }

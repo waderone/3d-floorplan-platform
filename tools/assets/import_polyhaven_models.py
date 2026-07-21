@@ -44,20 +44,6 @@ ASSETS: dict[str, dict[str, Any]] = {
             "textures/Sofa_01_arm_1k.jpg": (114593, "c7b757edd1f5fb506341be0063b9a3eb", "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Sofa_01/Sofa_01_arm_1k.jpg"),
         },
     },
-    "polyhaven-gothic-bed-01": {
-        "source_id": "polyhaven-gothic-bed-01-1k",
-        "source_name": "Gothic Bed 01",
-        "source_page": "https://polyhaven.com/a/GothicBed_01",
-        "author": "Kirill Sannikov",
-        "entry": "GothicBed_01_1k.gltf",
-        "files": {
-            "GothicBed_01_1k.gltf": (2683, "0635fcafb5d406ed9b10655a91f1eabb", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/GothicBed_01/GothicBed_01_1k.gltf"),
-            "GothicBed_01.bin": (658648, "6311b36b274a2062e20083631acddd18", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/GothicBed_01/GothicBed_01.bin"),
-            "textures/GothicBed_01_diff_1k.jpg": (116672, "d716199b889debf74c6fb2a8435f3625", "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/GothicBed_01/GothicBed_01_diff_1k.jpg"),
-            "textures/GothicBed_01_nor_gl_1k.jpg": (196568, "053bdd651a8cfe4e271c59976bd7c646", "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/GothicBed_01/GothicBed_01_nor_gl_1k.jpg"),
-            "textures/GothicBed_01_arm_1k.jpg": (180642, "a4e48dc5745de68a3ae2d68ba7a48f97", "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/GothicBed_01/GothicBed_01_arm_1k.jpg"),
-        },
-    },
     "polyhaven-modern-ceiling-lamp-01": {
         "source_id": "polyhaven-modern-ceiling-lamp-01-1k",
         "source_name": "Modern Ceiling Lamp 01",

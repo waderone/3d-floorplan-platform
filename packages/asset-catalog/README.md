@@ -6,11 +6,12 @@ cross-reference and on-disk SHA-256 validation. Model files are normalized to me
 centered on the floor, and delivered as GLB. A model load failure must use the catalog's
 explicit procedural fallback.
 
-Catalog v2 supports multiple audited sources and explicit model material handling. `replace`
+Catalog v3 supports multiple audited sources and explicit model material handling. `replace`
 uses the selected style role, `tint` keeps embedded PBR textures while multiplying the style
 color, and `preserve` keeps the authored materials. The starter set retains Kenney's tiny CC0
-fallbacks and adds fixed Poly Haven 1K glTF snapshots for modern armchairs, an alternate sofa,
-a bed, and a pendant light. Every source and local license notice remains part of startup validation.
+fallbacks, adds fixed Poly Haven 1K glTF snapshots for modern armchairs, an alternate sofa and a
+pendant light, and uses a reproducible project-original modern upholstered bed. Every source and
+local license notice remains part of startup validation.
 
 Regenerate the committed GLBs from an audited extraction of the official ZIP:
 
@@ -36,3 +37,12 @@ blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
 The importer pins every separate glTF dependency by byte count and MD5, emits SHA-256 values in
 its report, and embeds textures in the delivered GLB. It does not query a mutable asset catalog at
 runtime.
+
+Regenerate the project-original CC0 modern bed:
+
+```bash
+blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
+  --python tools/assets/generate_modern_bed.py -- \
+  --output packages/asset-catalog/models/project-modern-upholstered-bed.glb \
+  --report /tmp/project-modern-bed-report.json
+```

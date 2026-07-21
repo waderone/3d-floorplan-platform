@@ -20,7 +20,7 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
         "kenney-furniture-kit",
         "polyhaven-modern-arm-chair-01-1k",
         "polyhaven-sofa-01-1k",
-        "polyhaven-gothic-bed-01-1k",
+        "project-modern-upholstered-bed-v1",
         "polyhaven-modern-ceiling-lamp-01-1k",
     }
     assert {source.license.spdx for source in catalog.manifest.sources} == {"CC0-1.0"}
@@ -28,11 +28,12 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     model_bytes = sum(
         asset.delivery.bytes for asset in catalog.manifest.assets if asset.delivery is not None
     )
-    assert model_bytes == 4_867_112
+    assert model_bytes == 3_817_512
     assert model_bytes < catalog.manifest.mobile_budget_bytes
     assert catalog.assets["polyhaven-sofa-01"].material_mode == "tint"
     assert catalog.assets["polyhaven-modern-arm-chair-01"].material_mode == "tint"
     assert catalog.assets["polyhaven-modern-ceiling-lamp-01"].material_mode == "preserve"
+    assert catalog.assets["project-modern-upholstered-bed"].material_mode == "preserve"
     assert catalog.recipe("living")[-1].size == (0.32, 0.7, 0.32)
 
 

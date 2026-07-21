@@ -89,6 +89,10 @@ class CopyRenderer:
             "assetCatalogVersion": catalog["version"],
             "realAssetPlacements": real_asset_placements,
             "fallbackPlacements": 0,
+            "openingCount": len(layout["openings"]),
+            "ignoredOpeningCount": len(layout["ignoredOpeningIds"]),
+            "openingBlockedRoomCount": len(layout["openingBlockedRoomIds"]),
+            "openingClearanceValidated": layout["openingClearanceValidated"],
         }
 
 
@@ -550,6 +554,44 @@ def test_project_layout_exposes_ready_and_fallback_states(client: TestClient) ->
             encoding="utf-8"
         )
     )
+    nodes = fixture["scene"]["nodes"]
+    nodes["level_layout"]["children"].extend(["wall_entry", "wall_bedroom_window"])
+    nodes["wall_entry"] = {
+        "id": "wall_entry",
+        "type": "wall",
+        "parentId": "level_layout",
+        "children": ["door_entry"],
+        "start": [-8, -4],
+        "end": [-8, 3],
+    }
+    nodes["door_entry"] = {
+        "id": "door_entry",
+        "type": "door",
+        "parentId": "wall_entry",
+        "wallId": "wall_entry",
+        "position": [1, 1.05, 0],
+        "width": 0.9,
+        "height": 2.1,
+        "doorType": "hinged",
+    }
+    nodes["wall_bedroom_window"] = {
+        "id": "wall_bedroom_window",
+        "type": "wall",
+        "parentId": "level_layout",
+        "children": ["window_bedroom"],
+        "start": [-2, 6],
+        "end": [3, 6],
+    }
+    nodes["window_bedroom"] = {
+        "id": "window_bedroom",
+        "type": "window",
+        "parentId": "wall_bedroom_window",
+        "wallId": "wall_bedroom_window",
+        "position": [4, 1.55, 0],
+        "width": 1.5,
+        "height": 1.5,
+        "windowType": "casement",
+    }
     assert client.put(
         "/api/projects/room-layout/scene",
         json=scene_payload(scene=fixture["scene"]),
@@ -564,6 +606,9 @@ def test_project_layout_exposes_ready_and_fallback_states(client: TestClient) ->
     assert ready.json()["selectedRoomId"] == "zone_living"
     assert ready.json()["style"] == {"id": "modern-contrast", "version": 1}
     assert ready.json()["placements"][0]["roomId"] == "zone_living"
+    assert {entry["sourceType"] for entry in ready.json()["openings"]} == {"door", "window"}
+    assert ready.json()["openingClearanceValidated"] is True
+    assert ready.json()["ignoredOpeningIds"] == []
 
     assert client.put(
         "/api/projects/no-layout/scene",
@@ -643,6 +688,10 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     assert payload["engine"] == "BLENDER_EEVEE"
     assert payload["device"] == "RASTER:test"
     assert payload["blenderVersion"] == "5.2.0 LTS test"
+    assert payload["openingCount"] == 0
+    assert payload["ignoredOpeningCount"] == 0
+    assert payload["openingBlockedRoomCount"] == 0
+    assert payload["openingClearanceValidated"] is True
     assert client.get(payload["output"]["url"]).content.startswith(b"\x89PNG")
 
     duplicate = client.post(

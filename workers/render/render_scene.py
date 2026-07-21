@@ -53,9 +53,29 @@ def load_style(path: Path) -> dict[str, Any]:
 
 def load_layout(path: Path, style: dict[str, Any]) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
-    required = {"layoutId", "pipelineVersion", "style", "status", "placements"}
+    required = {
+        "schemaVersion",
+        "layoutId",
+        "pipelineVersion",
+        "style",
+        "status",
+        "openings",
+        "ignoredOpeningIds",
+        "openingBlockedRoomIds",
+        "openingClearanceValidated",
+        "placements",
+    }
     if not isinstance(value, dict) or not required.issubset(value):
         raise ValueError("layout manifest is invalid")
+    if (
+        value["schemaVersion"] != "3.0"
+        or value["pipelineVersion"] != "multiroom-opening-clearance-layout-v3"
+        or value["openingClearanceValidated"] is not True
+        or not isinstance(value["openings"], list)
+        or not isinstance(value["ignoredOpeningIds"], list)
+        or not isinstance(value["openingBlockedRoomIds"], list)
+    ):
+        raise ValueError("layout opening clearance contract is invalid")
     if value["style"] != {"id": style["id"], "version": style["version"]}:
         raise ValueError("layout manifest style does not match the style pack")
     if value["status"] not in {"ready", "partial", "fallback"} or not isinstance(value["placements"], list):
@@ -784,6 +804,10 @@ def main() -> None:
         "assetCatalogVersion": catalog["version"],
         "realAssetPlacements": real_asset_placements,
         "fallbackPlacements": fallback_placements,
+        "openingCount": len(layout["openings"]),
+        "ignoredOpeningCount": len(layout["ignoredOpeningIds"]),
+        "openingBlockedRoomCount": len(layout["openingBlockedRoomIds"]),
+        "openingClearanceValidated": layout["openingClearanceValidated"],
     }
     args.report.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
 

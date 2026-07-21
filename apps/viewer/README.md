@@ -20,9 +20,14 @@ Viewer 面向客户提供全屋/鸟瞰和按实际 layout 动态生成的客厅�
 全部可用风格，同一个建筑 GLB 可即时替换 PBR 建筑、地面、真实家具角色材质、陈设和灯光；
 切换后 URL 的 `style` 参数同步更新，可直接分享当前方案，不会重新下载建筑模型。
 
-资产目录 v2 为真实模型声明 `replace`、`tint` 或 `preserve`。其中 `tint` 会保留 glTF 内嵌
+资产目录 v3 为真实模型声明 `replace`、`tint` 或 `preserve`。其中 `tint` 会保留 glTF 内嵌
 的 base color、AO/rough/metal 与法线纹理，只将风格角色色作为乘算色；`preserve` 用于玻璃、
-金属等不应被整件刷色的灯具。实例尺寸可由受校验 recipe 覆盖，Viewer 与 Blender 使用同一结果。
+金属等不应被整件刷色的灯具和项目原创现代软包床。实例尺寸可由受校验 recipe 覆盖，Viewer
+与 Blender 使用同一结果。
+
+layout v3 从 Pascal 权威 Door/Window 派生门扇开启区和窗边接近区。家具只在通过边界、互碰
+和开口净空后发布；页面显示门窗数量和阻断状态，并提供默认关闭的 `⌗` 动线检查层。曲墙或
+宿主不完整的开口会显式计入 ignored，不由 Viewer 猜测。
 
 实时画质使用 ACES、FXAA、轻量 bloom 和软阴影，桌面使用 4× MSAA/2048 阴影，手机自动降为
 1× MSAA/1024 阴影并限制像素倍率。模型、风格、layout 和目录的 project/revision/version

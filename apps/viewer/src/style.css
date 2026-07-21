@@ -44,6 +44,7 @@ button { font: inherit; }
 .brand div { display: flex; flex-direction: column; gap: 1px; }
 .brand strong { font-family: Georgia, "Songti SC", serif; font-size: 18px; font-weight: 500; letter-spacing: .04em; }
 .brand span:last-child { color: rgba(30, 39, 37, .52); font-size: 8px; font-weight: 700; letter-spacing: .22em; }
+.tool-actions { display: flex; gap: 8px; pointer-events: auto; }
 
 .icon-button, .view-controls button, .style-options button, #retry {
   border: 1px solid rgba(30, 39, 37, .14); color: #273431;
@@ -51,6 +52,8 @@ button { font: inherit; }
   backdrop-filter: blur(18px); cursor: pointer; pointer-events: auto;
 }
 .icon-button { width: 40px; height: 40px; border-radius: 13px; font-size: 20px; }
+.icon-button.active { color: white; border-color: rgba(49, 95, 82, .7); background: #315f52; }
+.icon-button[hidden] { display: none; }
 
 .model-card {
   position: absolute; z-index: 3; left: max(24px, env(safe-area-inset-left)); top: 104px;

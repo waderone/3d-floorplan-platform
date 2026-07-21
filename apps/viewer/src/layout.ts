@@ -15,10 +15,27 @@ export interface LayoutPlacement extends StylePlacement {
   roomId: string
 }
 
+export interface LayoutOpening {
+  id: string
+  sourceType: 'door' | 'window'
+  openingKind: 'door' | 'window' | 'opening'
+  operationType: string
+  wallId: string
+  levelId: string | null
+  roomIds: string[]
+  center: [number, number]
+  width: number
+  height: number
+  sillHeight: number
+  clearanceType: 'swing' | 'approach'
+  clearanceDepth: number
+  clearancePolygon: Array<[number, number]>
+}
+
 export interface LayoutManifest {
-  schemaVersion: '2.0'
+  schemaVersion: '3.0'
   layoutId: string
-  pipelineVersion: 'multiroom-asset-layout-v2'
+  pipelineVersion: 'multiroom-opening-clearance-layout-v3'
   projectId: string
   sceneRevision: number
   style: { id: string; version: number }
@@ -33,7 +50,12 @@ export interface LayoutManifest {
   mobileAssetBudgetExceeded: boolean
   wallClearance: number
   itemClearance: number
+  placementSearch: 'bounded-grid-v1'
+  openingClearanceValidated: boolean
+  ignoredOpeningIds: string[]
+  openingBlockedRoomIds: string[]
   rooms: LayoutRoom[]
+  openings: LayoutOpening[]
   placements: LayoutPlacement[]
 }
 
@@ -55,10 +77,10 @@ function parseVector(value: unknown, length: 2 | 3): number[] {
 export function parseLayoutManifest(value: unknown): LayoutManifest {
   if (
     !isRecord(value) ||
-    value.schemaVersion !== '2.0' ||
+    value.schemaVersion !== '3.0' ||
     typeof value.layoutId !== 'string' ||
     !/^[0-9a-f]{64}$/.test(value.layoutId) ||
-    value.pipelineVersion !== 'multiroom-asset-layout-v2' ||
+    value.pipelineVersion !== 'multiroom-opening-clearance-layout-v3' ||
     typeof value.projectId !== 'string' ||
     !Number.isInteger(value.sceneRevision) ||
     !isRecord(value.style) ||
@@ -77,7 +99,14 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
     typeof value.mobileAssetBudgetExceeded !== 'boolean' ||
     !isNumber(value.wallClearance) ||
     !isNumber(value.itemClearance) ||
+    value.placementSearch !== 'bounded-grid-v1' ||
+    typeof value.openingClearanceValidated !== 'boolean' ||
+    !Array.isArray(value.ignoredOpeningIds) ||
+    !value.ignoredOpeningIds.every((entry) => typeof entry === 'string') ||
+    !Array.isArray(value.openingBlockedRoomIds) ||
+    !value.openingBlockedRoomIds.every((entry) => typeof entry === 'string') ||
     !Array.isArray(value.rooms) ||
+    !Array.isArray(value.openings) ||
     !Array.isArray(value.placements)
   ) {
     throw new Error('自动布局服务返回了无效数据')
@@ -107,6 +136,42 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
   })
 
   const roomIds = new Set(rooms.map((room) => room.id))
+  const openings = value.openings.map((opening): LayoutOpening => {
+    if (
+      !isRecord(opening) ||
+      typeof opening.id !== 'string' ||
+      !(opening.sourceType === 'door' || opening.sourceType === 'window') ||
+      !(opening.openingKind === 'door' ||
+        opening.openingKind === 'window' ||
+        opening.openingKind === 'opening') ||
+      typeof opening.operationType !== 'string' ||
+      opening.operationType.length === 0 ||
+      typeof opening.wallId !== 'string' ||
+      !(opening.levelId === null || typeof opening.levelId === 'string') ||
+      !Array.isArray(opening.roomIds) ||
+      !opening.roomIds.every((roomId) => typeof roomId === 'string' && roomIds.has(roomId)) ||
+      !isNumber(opening.width) ||
+      opening.width <= 0 ||
+      !isNumber(opening.height) ||
+      opening.height <= 0 ||
+      !isNumber(opening.sillHeight) ||
+      opening.sillHeight < 0 ||
+      !(opening.clearanceType === 'swing' || opening.clearanceType === 'approach') ||
+      !isNumber(opening.clearanceDepth) ||
+      opening.clearanceDepth <= 0 ||
+      !Array.isArray(opening.clearancePolygon) ||
+      opening.clearancePolygon.length < 3
+    ) {
+      throw new Error('自动布局开口格式无效')
+    }
+    return {
+      ...opening,
+      center: parseVector(opening.center, 2) as [number, number],
+      clearancePolygon: opening.clearancePolygon.map(
+        (point) => parseVector(point, 2) as [number, number],
+      ),
+    } as LayoutOpening
+  })
   const placements = value.placements.map((placement): LayoutPlacement => {
     if (
       !isRecord(placement) ||
@@ -140,5 +205,5 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
   if (value.status === 'fallback' && placements.length !== 0) {
     throw new Error('自动布局回退状态不能包含陈设')
   }
-  return { ...value, rooms, placements } as LayoutManifest
+  return { ...value, rooms, openings, placements } as LayoutManifest
 }

@@ -12,7 +12,7 @@ from .assets import AssetCatalog, RoomType
 from .styles import StylePack, StylePlacement
 
 
-LAYOUT_PIPELINE_VERSION = "multiroom-asset-layout-v2"
+LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v3"
 Point2D = tuple[float, float]
 
 
@@ -51,12 +51,33 @@ class LayoutPlacement(BaseModel):
     rotation_y_degrees: float = Field(alias="rotationYDegrees")
 
 
+class LayoutOpening(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    id: str
+    source_type: Literal["door", "window"] = Field(alias="sourceType")
+    opening_kind: Literal["door", "window", "opening"] = Field(alias="openingKind")
+    operation_type: str = Field(alias="operationType")
+    wall_id: str = Field(alias="wallId")
+    level_id: str | None = Field(alias="levelId")
+    room_ids: list[str] = Field(alias="roomIds")
+    center: Point2D
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+    sill_height: float = Field(alias="sillHeight", ge=0)
+    clearance_type: Literal["swing", "approach"] = Field(alias="clearanceType")
+    clearance_depth: float = Field(alias="clearanceDepth", gt=0)
+    clearance_polygon: list[Point2D] = Field(alias="clearancePolygon", min_length=3)
+
+
 class LayoutManifest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    schema_version: Literal["2.0"] = Field(alias="schemaVersion")
+    schema_version: Literal["3.0"] = Field(alias="schemaVersion")
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
-    pipeline_version: Literal["multiroom-asset-layout-v2"] = Field(alias="pipelineVersion")
+    pipeline_version: Literal["multiroom-opening-clearance-layout-v3"] = Field(
+        alias="pipelineVersion"
+    )
     project_id: str = Field(alias="projectId")
     scene_revision: int = Field(alias="sceneRevision", ge=1)
     style: LayoutStyleReference
@@ -74,7 +95,12 @@ class LayoutManifest(BaseModel):
     mobile_asset_budget_exceeded: bool = Field(alias="mobileAssetBudgetExceeded")
     wall_clearance: float = Field(alias="wallClearance", ge=0)
     item_clearance: float = Field(alias="itemClearance", ge=0)
+    placement_search: Literal["bounded-grid-v1"] = Field(alias="placementSearch")
+    opening_clearance_validated: bool = Field(alias="openingClearanceValidated")
+    ignored_opening_ids: list[str] = Field(alias="ignoredOpeningIds")
+    opening_blocked_room_ids: list[str] = Field(alias="openingBlockedRoomIds")
     rooms: list[LayoutRoom]
+    openings: list[LayoutOpening]
     placements: list[LayoutPlacement]
 
 
@@ -183,6 +209,168 @@ def extract_rooms(nodes: dict[str, dict[str, Any]]) -> list[LayoutRoom]:
         if candidates:
             break
     return sorted(candidates, key=lambda room: (-room.area, room.id))
+
+
+def _finite_vector(value: Any, length: int) -> tuple[float, ...] | None:
+    if (
+        not isinstance(value, (list, tuple))
+        or len(value) != length
+        or any(isinstance(entry, bool) or not isinstance(entry, (int, float)) for entry in value)
+    ):
+        return None
+    parsed = tuple(float(entry) for entry in value)
+    return parsed if all(math.isfinite(entry) for entry in parsed) else None
+
+
+def _oriented_rectangle(
+    center: Point2D,
+    tangent: Point2D,
+    half_width: float,
+    half_depth: float,
+) -> list[Point2D]:
+    normal = (-tangent[1], tangent[0])
+    return [
+        (
+            center[0] + tangent[0] * along + normal[0] * across,
+            center[1] + tangent[1] * along + normal[1] * across,
+        )
+        for along, across in (
+            (-half_width, -half_depth),
+            (half_width, -half_depth),
+            (half_width, half_depth),
+            (-half_width, half_depth),
+        )
+    ]
+
+
+def _polygons_overlap(first: list[Point2D], second: list[Point2D]) -> bool:
+    if any(_point_in_polygon(point, second) for point in first):
+        return True
+    if any(_point_in_polygon(point, first) for point in second):
+        return True
+    first_edges = [
+        (point, first[(index + 1) % len(first)]) for index, point in enumerate(first)
+    ]
+    second_edges = [
+        (point, second[(index + 1) % len(second)]) for index, point in enumerate(second)
+    ]
+    return any(
+        _segments_intersect(first_start, first_end, second_start, second_end)
+        for first_start, first_end in first_edges
+        for second_start, second_end in second_edges
+    )
+
+
+def extract_openings(
+    nodes: dict[str, dict[str, Any]],
+    rooms: list[LayoutRoom],
+) -> tuple[list[LayoutOpening], list[str]]:
+    openings: list[LayoutOpening] = []
+    ignored: list[str] = []
+    for node_id, node in sorted(nodes.items()):
+        source_type = node.get("type")
+        if source_type not in {"door", "window"}:
+            continue
+        wall_id_value = node.get("wallId") or node.get("parentId")
+        wall_id = wall_id_value if isinstance(wall_id_value, str) else None
+        wall = nodes.get(wall_id) if wall_id else None
+        wall_start = _finite_vector(wall.get("start"), 2) if isinstance(wall, dict) else None
+        wall_end = _finite_vector(wall.get("end"), 2) if isinstance(wall, dict) else None
+        position = _finite_vector(node.get("position", [0, 0, 0]), 3)
+        if (
+            wall_id is None
+            or not isinstance(wall, dict)
+            or wall.get("type") != "wall"
+            or wall_start is None
+            or wall_end is None
+            or position is None
+            or abs(float(wall.get("curveOffset", 0) or 0)) > 1e-9
+        ):
+            ignored.append(node_id)
+            continue
+        wall_dx = wall_end[0] - wall_start[0]
+        wall_dz = wall_end[1] - wall_start[1]
+        wall_length = math.hypot(wall_dx, wall_dz)
+        width_default, height_default = ((0.9, 2.1) if source_type == "door" else (1.5, 1.5))
+        width_value = node.get("width", width_default)
+        height_value = node.get("height", height_default)
+        if (
+            wall_length < 1e-9
+            or isinstance(width_value, bool)
+            or not isinstance(width_value, (int, float))
+            or isinstance(height_value, bool)
+            or not isinstance(height_value, (int, float))
+        ):
+            ignored.append(node_id)
+            continue
+        width = float(width_value)
+        height = float(height_value)
+        if (
+            not math.isfinite(width)
+            or not math.isfinite(height)
+            or width <= 0
+            or height <= 0
+            or position[0] < 0
+            or position[0] > wall_length
+        ):
+            ignored.append(node_id)
+            continue
+        tangent = (wall_dx / wall_length, wall_dz / wall_length)
+        normal = (-tangent[1], tangent[0])
+        center = (
+            wall_start[0] + tangent[0] * position[0] + normal[0] * position[2],
+            wall_start[1] + tangent[1] * position[0] + normal[1] * position[2],
+        )
+        if source_type == "door":
+            opening_kind = node.get("openingKind", "door")
+            opening_kind = opening_kind if opening_kind in {"door", "opening"} else "door"
+            operation_type = node.get("doorType", "hinged")
+            operation_type = operation_type if isinstance(operation_type, str) else "hinged"
+            if opening_kind == "door" and operation_type in {"hinged", "double", "french", "folding"}:
+                clearance_type: Literal["swing", "approach"] = "swing"
+                clearance_depth = max(0.9, width)
+            else:
+                clearance_type = "approach"
+                clearance_depth = 1.2 if operation_type.startswith("garage-") else 0.75
+        else:
+            opening_kind_value = node.get("openingKind", "window")
+            opening_kind = opening_kind_value if opening_kind_value in {"window", "opening"} else "window"
+            operation_type_value = node.get("windowType", "fixed")
+            operation_type = operation_type_value if isinstance(operation_type_value, str) else "fixed"
+            clearance_type = "approach"
+            clearance_depth = 0.6
+        clearance_polygon = _oriented_rectangle(
+            center,
+            tangent,
+            width / 2 + 0.1,
+            clearance_depth,
+        )
+        level_id = wall.get("parentId") if isinstance(wall.get("parentId"), str) else None
+        room_ids = sorted(
+            room.id
+            for room in rooms
+            if (level_id is None or room.level_id == level_id)
+            and _polygons_overlap(clearance_polygon, room.polygon)
+        )
+        openings.append(
+            LayoutOpening(
+                id=node_id,
+                sourceType=source_type,
+                openingKind=opening_kind,
+                operationType=operation_type,
+                wallId=wall_id,
+                levelId=level_id,
+                roomIds=room_ids,
+                center=center,
+                width=width,
+                height=height,
+                sillHeight=max(0.0, position[1] - height / 2),
+                clearanceType=clearance_type,
+                clearanceDepth=clearance_depth,
+                clearancePolygon=clearance_polygon,
+            )
+        )
+    return openings, ignored
 
 
 def _rotated_corners(placement: StylePlacement) -> list[Point2D]:
@@ -369,6 +557,83 @@ def _items_have_clearance(
     return True
 
 
+def _bounds_overlap_polygon(
+    bounds: tuple[float, float, float, float],
+    translation: Point2D,
+    polygon: list[Point2D],
+) -> bool:
+    minimum_x, minimum_z, maximum_x, maximum_z = bounds
+    corners = [
+        (minimum_x + translation[0], minimum_z + translation[1]),
+        (maximum_x + translation[0], minimum_z + translation[1]),
+        (maximum_x + translation[0], maximum_z + translation[1]),
+        (minimum_x + translation[0], maximum_z + translation[1]),
+    ]
+    return _polygons_overlap(corners, polygon)
+
+
+def _offset_values(limit: float, step: float = 0.25) -> list[float]:
+    values = [0.0]
+    steps = int(limit // step)
+    for index in range(1, steps + 1):
+        values.extend((index * step, -index * step))
+    if limit - steps * step > 1e-8:
+        values.extend((limit, -limit))
+    return values
+
+
+def _candidate_translations(
+    room: LayoutRoom,
+    bounds: dict[str, tuple[float, float, float, float]],
+    template_center: Point2D,
+    wall_clearance: float,
+) -> list[Point2D]:
+    room_x = [point[0] for point in room.polygon]
+    room_z = [point[1] for point in room.polygon]
+    template_minimum_x = min(value[0] for value in bounds.values())
+    template_minimum_z = min(value[1] for value in bounds.values())
+    template_maximum_x = max(value[2] for value in bounds.values())
+    template_maximum_z = max(value[3] for value in bounds.values())
+    maximum_offset_x = max(
+        0.0,
+        (
+            max(room_x)
+            - min(room_x)
+            - (template_maximum_x - template_minimum_x)
+            - wall_clearance * 2
+        )
+        / 2,
+    )
+    maximum_offset_z = max(
+        0.0,
+        (
+            max(room_z)
+            - min(room_z)
+            - (template_maximum_z - template_minimum_z)
+            - wall_clearance * 2
+        )
+        / 2,
+    )
+    base = (
+        room.centroid[0] - template_center[0],
+        room.centroid[1] - template_center[1],
+    )
+    offsets = [
+        (offset_x, offset_z)
+        for offset_x in _offset_values(maximum_offset_x)
+        for offset_z in _offset_values(maximum_offset_z)
+    ]
+    offsets.sort(
+        key=lambda offset: (
+            round(offset[0] * offset[0] + offset[1] * offset[1], 8),
+            abs(offset[0]) + abs(offset[1]),
+            offset[1],
+            offset[0],
+        )
+    )
+    return [(base[0] + offset[0], base[1] + offset[1]) for offset in offsets[:4096]]
+
+
 def _identity_payload(manifest: dict[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
@@ -383,8 +648,9 @@ def generate_layout(
     asset_catalog: AssetCatalog,
 ) -> LayoutManifest:
     rooms = extract_rooms(nodes)
+    openings, ignored_opening_ids = extract_openings(nodes, rooms)
     base = {
-        "schemaVersion": "2.0",
+        "schemaVersion": "3.0",
         "pipelineVersion": LAYOUT_PIPELINE_VERSION,
         "projectId": project_id,
         "sceneRevision": scene_revision,
@@ -395,7 +661,10 @@ def generate_layout(
         },
         "wallClearance": style.layout.wall_clearance,
         "itemClearance": style.layout.item_clearance,
+        "placementSearch": "bounded-grid-v1",
+        "ignoredOpeningIds": ignored_opening_ids,
         "rooms": [room.model_dump(by_alias=True, mode="json") for room in rooms],
+        "openings": [opening.model_dump(by_alias=True, mode="json") for opening in openings],
     }
     if not rooms:
         payload = {
@@ -405,6 +674,8 @@ def generate_layout(
             "selectedRoomId": None,
             "furnishedRoomIds": [],
             "unfurnishedRoomIds": [],
+            "openingBlockedRoomIds": [],
+            "openingClearanceValidated": True,
             "referencedAssetBytes": 0,
             "mobileAssetBudgetBytes": asset_catalog.manifest.mobile_budget_bytes,
             "mobileAssetBudgetExceeded": False,
@@ -415,6 +686,7 @@ def generate_layout(
     placements: list[LayoutPlacement] = []
     furnished_room_ids: list[str] = []
     unfurnished_room_ids: list[str] = []
+    opening_blocked_room_ids: list[str] = []
     for room in rooms:
         recipe = asset_catalog.recipe(room.room_type)
         if not recipe:
@@ -450,14 +722,40 @@ def generate_layout(
             (min(point[0] for point in all_points) + max(point[0] for point in all_points)) / 2,
             (min(point[1] for point in all_points) + max(point[1] for point in all_points)) / 2,
         )
-        translation = (
-            room.centroid[0] - template_center[0],
-            room.centroid[1] - template_center[1],
+        candidate_translations = _candidate_translations(
+            room,
+            bounds,
+            template_center,
+            style.layout.wall_clearance,
         )
-        if not all(
-            _bounds_fit_room(item_bounds, translation, room, style.layout.wall_clearance)
-            for item_bounds in bounds.values()
-        ):
+        room_openings = [opening for opening in openings if room.id in opening.room_ids]
+        room_fit_candidates = [
+            candidate
+            for candidate in candidate_translations
+            if all(
+                _bounds_fit_room(item_bounds, candidate, room, style.layout.wall_clearance)
+                for item_bounds in bounds.values()
+            )
+        ]
+        translation = next(
+            (
+                candidate
+                for candidate in room_fit_candidates
+                if not any(
+                    _bounds_overlap_polygon(
+                        item_bounds,
+                        candidate,
+                        opening.clearance_polygon,
+                    )
+                    for item_bounds in bounds.values()
+                    for opening in room_openings
+                )
+            ),
+            None,
+        )
+        if translation is None:
+            if room_fit_candidates and room_openings:
+                opening_blocked_room_ids.append(room.id)
             unfurnished_room_ids.append(room.id)
             continue
         placements.extend(
@@ -504,6 +802,8 @@ def generate_layout(
         "selectedRoomId": furnished_room_ids[0] if furnished_room_ids else None,
         "furnishedRoomIds": furnished_room_ids,
         "unfurnishedRoomIds": unfurnished_room_ids,
+        "openingBlockedRoomIds": opening_blocked_room_ids,
+        "openingClearanceValidated": True,
         "referencedAssetBytes": referenced_asset_bytes,
         "mobileAssetBudgetBytes": asset_catalog.manifest.mobile_budget_bytes,
         "mobileAssetBudgetExceeded": (

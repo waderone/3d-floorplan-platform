@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 2,
+  "version": 3,
   "mobileBudgetBytes": 5242880,
   "sources": [
     {
@@ -50,18 +50,18 @@
       }
     },
     {
-      "id": "polyhaven-gothic-bed-01-1k",
-      "name": "Gothic Bed 01",
-      "siteVersion": "2020-03-31",
-      "embeddedVersion": "1k-gltf",
-      "author": "Kirill Sannikov",
-      "sourceUrl": "https://polyhaven.com/a/GothicBed_01",
-      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/GothicBed_01/GothicBed_01_1k.gltf",
-      "sha256": "67df189dd3a645936827f3cc123fb9e97ca9d2201d1e4090762bf477cab82fc0",
+      "id": "project-modern-upholstered-bed-v1",
+      "name": "Project Modern Upholstered Bed",
+      "siteVersion": "2026-07-21",
+      "embeddedVersion": "modern-upholstered-bed-v1",
+      "author": "3D Floorplan Platform contributors",
+      "sourceUrl": "https://github.com/waderone/3d-floorplan-platform/blob/main/tools/assets/generate_modern_bed.py",
+      "downloadUrl": "https://raw.githubusercontent.com/waderone/3d-floorplan-platform/main/tools/assets/generate_modern_bed.py",
+      "sha256": "eb6d2f47f0f3cdc7f1fc9b344a5b1815e458e352fd364ed21475a862753e7509",
       "license": {
         "spdx": "CC0-1.0",
-        "url": "https://polyhaven.com/license",
-        "localNotice": "LICENSE-POLY-HAVEN.txt"
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "localNotice": "LICENSE-PROJECT-ASSETS.txt"
       }
     },
     {
@@ -194,18 +194,18 @@
       "fallback": {"kind": "box", "materialRole": "fabric"}
     },
     {
-      "id": "polyhaven-gothic-bed-01",
+      "id": "project-modern-upholstered-bed",
       "kind": "model",
       "roomTypes": ["bedroom"],
-      "sourceId": "polyhaven-gothic-bed-01-1k",
-      "sourceEntry": "1k/GothicBed_01_1k.gltf",
-      "sourceSha256": "67df189dd3a645936827f3cc123fb9e97ca9d2201d1e4090762bf477cab82fc0",
-      "canonicalSize": [1.493752, 1.53384, 2.04],
-      "materialMode": "tint",
+      "sourceId": "project-modern-upholstered-bed-v1",
+      "sourceEntry": "tools/assets/generate_modern_bed.py",
+      "sourceSha256": "eb6d2f47f0f3cdc7f1fc9b344a5b1815e458e352fd364ed21475a862753e7509",
+      "canonicalSize": [2.1, 1.38, 2.23],
+      "materialMode": "preserve",
       "delivery": {
-        "url": "/catalog-assets/models/polyhaven-gothic-bed-01.glb",
-        "sha256": "ffa6aa8b1c2763873a010d744fe2674386ba8e5283bf3b094f123415b21b208c",
-        "bytes": 1158624
+        "url": "/catalog-assets/models/project-modern-upholstered-bed.glb",
+        "sha256": "2cc8b6fa65e11013c86e2234feb5303c5ae5004ddba9ea5ab68967a353d04432",
+        "bytes": 109024
       },
       "fallback": {"kind": "box", "materialRole": "fabric"}
     },
@@ -264,9 +264,9 @@
       {"id": "dining-chair-west", "itemId": "dining-chair-west", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [-1.25, 0.47, 0], "rotationYDegrees": 90}
     ],
     "bedroom": [
-      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "polyhaven-gothic-bed-01", "role": "fabric", "collisionMode": "solid", "position": [0, 0.76692, 0.4], "rotationYDegrees": 0},
-      {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [1.42, 0.3, 0.2], "rotationYDegrees": 0},
-      {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.42, 0.3, 0.2], "rotationYDegrees": 0},
+      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "project-modern-upholstered-bed", "role": "fabric", "collisionMode": "solid", "position": [0, 0.63, 0.4], "size": [1.92, 1.26, 2.04], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [1.4, 0.3, 0.2], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.4, 0.3, 0.2], "rotationYDegrees": 0},
       {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0},
       {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.3], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
     ]

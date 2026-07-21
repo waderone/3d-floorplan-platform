@@ -149,15 +149,18 @@ POST JSON 示例：
 denoise、HDRI 与 PBR 木地板，输出鸟瞰/客厅/卧室三视角。未知档位返回 404。
 
 接口返回 HTTP 202 和 processing manifest；后台完成后 latest 变为 ready 或 failed。
-ready 保留兼容字段 `output`，同时记录 `profile`、`device`、总耗时和 `views[]`。
+ready 保留兼容字段 `output`，同时记录 `profile`、`device`、总耗时、`views[]`，以及同一
+layout v3 的 opening/ignored/blocked 数量和净空验证状态。
 每个视角都有独立 PNG URL、SHA-256、字节数、尺寸与渲染耗时；`output` 恒等于
 第一个鸟瞰视角，旧客户仍可继续访问 `/renders/.../image.png`。
 
 layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。房型优先使用显式
 `roomType`，缺失时按受控中英文名称分类。返回 `ready`、`partial` 或 `fallback`，包含全部
 候选房间、已布置/未布置房间、带 `roomId`/`assetId` 的绝对坐标、目录版本以及唯一真实
-模型的移动端字节预算。真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender
-加载失败时按目录声明创建程序化回退并记录数量。
+模型的移动端字节预算。layout v3 还从直线 Wall 的权威 Door/Window 生成世界坐标净空多边形，
+用 0.25 m 有界候选搜索避让；曲墙/孤儿开口列入 ignored，全部候选被开口阻断的房间显式列出。
+真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender 加载失败时按目录声明创建
+程序化回退并记录数量。
 
 ### 户型图识别建议
 

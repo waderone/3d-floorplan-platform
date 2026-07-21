@@ -41,7 +41,10 @@ root.innerHTML = `
         <span class="brand-mark" aria-hidden="true">◇</span>
         <div><strong>空间预览</strong><span>3D FLOORPLAN</span></div>
       </div>
-      <button class="icon-button" id="fullscreen" type="button" aria-label="全屏浏览">⛶</button>
+      <div class="tool-actions">
+        <button class="icon-button" id="clearances" type="button" aria-label="显示门窗动线净空" aria-pressed="false">⌗</button>
+        <button class="icon-button" id="fullscreen" type="button" aria-label="全屏浏览">⛶</button>
+      </div>
     </header>
     <aside class="model-card" aria-label="模型信息">
       <span class="eyebrow">INTERACTIVE HOME</span>
@@ -99,6 +102,7 @@ const styleOptions = element<HTMLElement>('#style-options')
 const styleDescription = element<HTMLElement>('#style-description')
 const styleSwitchStatus = element<HTMLElement>('#style-switch-status')
 const roomViews = element<HTMLElement>('#room-views')
+const clearancesButton = element<HTMLButtonElement>('#clearances')
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
@@ -168,6 +172,7 @@ let currentCatalog: AssetCatalog | null = null
 let styleSummaries: StyleSummary[] = []
 let roomViewOptions: RoomViewOption[] = []
 let switchingStyle = false
+let openingClearancesVisible = false
 
 function apiUrl(path: string): string {
   return `${apiBase}${path}`
@@ -211,8 +216,10 @@ function setReady(
     ? layout.unfurnishedRoomIds.length
       ? `已布置 ${layout.furnishedRoomIds.length} · 待处理 ${layout.unfurnishedRoomIds.length}`
       : `已布置 · ${layout.furnishedRoomIds.length} 个房间`
-    : layout.fallbackReason === 'no-room-fits'
-      ? '房间尺寸不足'
+    : layout.openingBlockedRoomIds.length
+      ? `门窗净空阻断 ${layout.openingBlockedRoomIds.length} 个房间`
+      : layout.fallbackReason === 'no-room-fits'
+        ? '房间尺寸不足'
       : layout.fallbackReason === 'no-supported-room'
         ? '暂无支持的房间类型'
         : '待补房间边界'
@@ -222,7 +229,8 @@ function setReady(
       ? '移动优化画质'
       : '实时高画质'
   const furnitureItems = new Set(layout.placements.map((placement) => placement.itemId)).size
-  stats.innerHTML = `<span><strong>${layout.rooms.length}</strong> 个空间</span><span><strong>${furnitureItems}</strong> 组家具</span><span><strong>${assetStats.models}</strong> 真实模型</span>${assetStats.fallbacks ? `<span class="fallback-stat"><strong>${assetStats.fallbacks}</strong> 项回退</span>` : ''}`
+  stats.innerHTML = `<span><strong>${layout.rooms.length}</strong> 个空间</span><span><strong>${furnitureItems}</strong> 组家具</span><span><strong>${layout.openings.length}</strong> 个门窗开口</span><span><strong>${assetStats.models}</strong> 真实模型</span>${assetStats.fallbacks ? `<span class="fallback-stat"><strong>${assetStats.fallbacks}</strong> 项回退</span>` : ''}`
+  clearancesButton.hidden = layout.openings.length === 0
   renderStyleOptions()
   renderRoomViews(layout)
 }
@@ -342,6 +350,32 @@ function modelBounds(meshes: AbstractMesh[]): { minimum: Vector3; maximum: Vecto
   return { minimum: bounds.min, maximum: bounds.max }
 }
 
+function addOpeningClearanceGuides(layout: LayoutManifest, floorTop: number): void {
+  for (const opening of layout.openings) {
+    const points = [...opening.clearancePolygon, opening.clearancePolygon[0]!].map(
+      ([x, z]) => new Vector3(x, floorTop + 0.025, z),
+    )
+    const outline = MeshBuilder.CreateDashedLines(
+      `opening-clearance-${opening.id}`,
+      { points, dashSize: 0.16, gapSize: 0.08, dashNb: 64 },
+      scene,
+    )
+    outline.color = opening.sourceType === 'door' ? new Color3(0.06, 0.4, 0.23) : new Color3(0.06, 0.3, 0.62)
+    outline.isVisible = openingClearancesVisible
+    outline.isPickable = false
+    styledMeshes.push(outline)
+  }
+}
+
+function setOpeningClearancesVisible(visible: boolean): void {
+  openingClearancesVisible = visible
+  for (const mesh of styledMeshes) {
+    if (mesh.name.startsWith('opening-clearance-')) mesh.isVisible = visible
+  }
+  clearancesButton.setAttribute('aria-pressed', String(visible))
+  clearancesButton.classList.toggle('active', visible)
+}
+
 function createFallback(
   placement: LayoutManifest['placements'][number],
   floorTop: number,
@@ -456,6 +490,7 @@ async function applyStyle(
   floor.material = materials.floor ?? architecture
   floor.receiveShadows = true
   styledMeshes.push(floor)
+  addOpeningClearanceGuides(layout, bounds.minimum.y)
 
   const assets = new Map(catalog.assets.map((asset) => [asset.id, asset]))
   let models = 0
@@ -678,6 +713,9 @@ element<HTMLButtonElement>('#retry').addEventListener('click', () => void loadMo
 element<HTMLButtonElement>('#fullscreen').addEventListener('click', async () => {
   if (document.fullscreenElement) await document.exitFullscreen()
   else await shell.requestFullscreen()
+})
+clearancesButton.addEventListener('click', () => {
+  setOpeningClearancesVisible(!openingClearancesVisible)
 })
 
 for (const button of root.querySelectorAll<HTMLButtonElement>('.view-controls > [data-view]')) {
