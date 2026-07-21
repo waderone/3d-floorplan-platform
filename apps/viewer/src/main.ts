@@ -2,12 +2,15 @@ import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
 import { Engine } from '@babylonjs/core/Engines/engine'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader'
+import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
 import { Scene } from '@babylonjs/core/scene'
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
@@ -15,6 +18,14 @@ import meshoptDecoderSource from '../node_modules/meshoptimizer/meshopt_decoder.
 import { parseAssetCatalog, type AssetCatalog, type CatalogAsset } from './asset-catalog'
 import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
+import {
+  buildRoomViewOptions,
+  parseStyleSummaries,
+  roomCameraPreset,
+  searchWithStyle,
+  type RoomViewOption,
+  type StyleSummary,
+} from './showroom'
 import { parseStylePack, type StylePack } from './style-pack'
 import './style.css'
 
@@ -33,12 +44,18 @@ root.innerHTML = `
       <button class="icon-button" id="fullscreen" type="button" aria-label="全屏浏览">⛶</button>
     </header>
     <aside class="model-card" aria-label="模型信息">
-      <span class="eyebrow">LIVE MODEL</span>
-      <h1 id="project-name">3D 户型</h1>
+      <span class="eyebrow">INTERACTIVE HOME</span>
+      <h1 id="project-name">全屋设计方案</h1>
       <div class="model-meta">
-        <span id="revision">Revision —</span><span id="size">—</span><span id="style-name">Style —</span><span id="layout-status">布局 —</span>
+        <span id="style-name">风格加载中</span><span id="layout-status">空间加载中</span><span id="quality-status">实时画质</span>
       </div>
       <div class="model-stats" id="stats"></div>
+    </aside>
+    <aside class="style-panel" aria-label="装修风格">
+      <span class="eyebrow">DESIGN STYLES</span>
+      <div class="style-heading"><strong>选择装修风格</strong><span id="style-switch-status" role="status" aria-live="polite"></span></div>
+      <div class="style-options" id="style-options"></div>
+      <p id="style-description">正在读取可用方案…</p>
     </aside>
     <div class="status-panel" id="status-panel" role="status" aria-live="polite">
       <div class="spinner" aria-hidden="true"></div>
@@ -51,9 +68,9 @@ root.innerHTML = `
       <button id="retry" type="button">重新加载</button>
     </div>
     <nav class="view-controls" aria-label="视角控制">
-      <button data-view="perspective" type="button" class="active">3D 视角</button>
-      <button data-view="top" type="button">俯视</button>
-      <button data-view="reset" type="button">复位</button>
+      <button data-view="whole" type="button" class="active">全屋</button>
+      <button data-view="top" type="button">鸟瞰</button>
+      <span id="room-views"></span>
     </nav>
     <p class="gesture-hint">拖动旋转 · 双指缩放 · 右键平移</p>
   </div>
@@ -74,16 +91,21 @@ const progress = element<HTMLElement>('#progress')
 const errorPanel = element<HTMLElement>('#error-panel')
 const errorMessage = element<HTMLElement>('#error-message')
 const projectName = element<HTMLElement>('#project-name')
-const revision = element<HTMLElement>('#revision')
-const size = element<HTMLElement>('#size')
 const stats = element<HTMLElement>('#stats')
 const styleName = element<HTMLElement>('#style-name')
 const layoutStatus = element<HTMLElement>('#layout-status')
+const qualityStatus = element<HTMLElement>('#quality-status')
+const styleOptions = element<HTMLElement>('#style-options')
+const styleDescription = element<HTMLElement>('#style-description')
+const styleSwitchStatus = element<HTMLElement>('#style-switch-status')
+const roomViews = element<HTMLElement>('#room-views')
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
-const styleId = new URLSearchParams(window.location.search).get('style') ?? 'warm-minimal'
+let currentStyleId = new URLSearchParams(window.location.search).get('style') ?? 'warm-minimal'
+const compactDevice = window.matchMedia('(max-width: 700px), (pointer: coarse)').matches
 const engine = new Engine(canvas, true, { adaptToDeviceRatio: true, stencil: true })
+engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (compactDevice ? 1.25 : 1.6)))
 const meshoptDecoderUrl = URL.createObjectURL(
   new Blob([meshoptDecoderSource], { type: 'text/javascript' }),
 )
@@ -114,6 +136,21 @@ skyLight.groundColor = new Color3(0.35, 0.4, 0.46)
 const sun = new DirectionalLight('sun', new Vector3(-0.45, -1, 0.35), scene)
 sun.intensity = 1.8
 sun.diffuse = new Color3(1, 0.9, 0.72)
+const shadows = new ShadowGenerator(compactDevice ? 1024 : 2048, sun)
+shadows.useBlurExponentialShadowMap = true
+shadows.blurKernel = compactDevice ? 16 : 28
+scene.imageProcessingConfiguration.toneMappingEnabled = true
+scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES
+scene.imageProcessingConfiguration.exposure = 1.08
+scene.imageProcessingConfiguration.contrast = 1.12
+scene.imageProcessingConfiguration.vignetteEnabled = true
+scene.imageProcessingConfiguration.vignetteWeight = 1.15
+const renderingPipeline = new DefaultRenderingPipeline('showroom-quality', true, scene, [camera])
+renderingPipeline.fxaaEnabled = true
+renderingPipeline.samples = compactDevice ? 1 : 4
+renderingPipeline.bloomEnabled = true
+renderingPipeline.bloomThreshold = 0.92
+renderingPipeline.bloomWeight = 0.08
 
 let container: AssetContainer | null = null
 let styledAssetContainers: AssetContainer[] = []
@@ -125,6 +162,12 @@ let defaultRadius = 12
 let perspectiveAlpha = -Math.PI / 4
 let perspectiveBeta = Math.PI / 3
 let radiusMultiplier = 1
+let currentManifest: ArtifactManifest | null = null
+let currentLayout: LayoutManifest | null = null
+let currentCatalog: AssetCatalog | null = null
+let styleSummaries: StyleSummary[] = []
+let roomViewOptions: RoomViewOption[] = []
+let switchingStyle = false
 
 function apiUrl(path: string): string {
   return `${apiBase}${path}`
@@ -160,9 +203,10 @@ function setReady(
   shell.dataset.state = 'ready'
   statusPanel.hidden = true
   errorPanel.hidden = true
-  projectName.textContent = manifest.projectId
-  revision.textContent = `Revision ${manifest.sceneRevision}`
-  styleName.textContent = `${style.name} v${style.version}`
+  projectName.textContent = '全屋设计方案'
+  document.title = `${style.name} · 3D 全屋方案`
+  styleName.textContent = style.name
+  styleDescription.textContent = style.description
   layoutStatus.textContent = layout.furnishedRoomIds.length
     ? layout.unfurnishedRoomIds.length
       ? `已布置 ${layout.furnishedRoomIds.length} · 待处理 ${layout.unfurnishedRoomIds.length}`
@@ -172,13 +216,68 @@ function setReady(
       : layout.fallbackReason === 'no-supported-room'
         ? '暂无支持的房间类型'
         : '待补房间边界'
-  if (!manifest.optimized) return
-  size.textContent = formatBytes(manifest.optimized.bytes)
-  const modelStats = manifest.optimized.statistics
-  stats.innerHTML = modelStats
-    ? `<span><strong>${modelStats.meshes}</strong> 网格</span><span><strong>${modelStats.materials}</strong> 材质</span><span><strong>${assetStats.models}</strong> 真实家具</span><span><strong>${assetStats.fallbacks}</strong> 回退</span>`
-    : ''
-  if (manifest.mobileBudgetExceeded) size.textContent += ' · 大模型'
+  qualityStatus.textContent = manifest.mobileBudgetExceeded
+    ? '轻量降级模式'
+    : compactDevice
+      ? '移动优化画质'
+      : '实时高画质'
+  const furnitureItems = new Set(layout.placements.map((placement) => placement.itemId)).size
+  stats.innerHTML = `<span><strong>${layout.rooms.length}</strong> 个空间</span><span><strong>${furnitureItems}</strong> 组家具</span><span><strong>${assetStats.models}</strong> 真实模型</span>${assetStats.fallbacks ? `<span class="fallback-stat"><strong>${assetStats.fallbacks}</strong> 项回退</span>` : ''}`
+  renderStyleOptions()
+  renderRoomViews(layout)
+}
+
+function setStyleSwitching(active: boolean, message = ''): void {
+  switchingStyle = active
+  shell.dataset.styleState = active ? 'switching' : 'ready'
+  styleSwitchStatus.textContent = message
+  for (const button of styleOptions.querySelectorAll<HTMLButtonElement>('button')) {
+    button.disabled = active
+  }
+}
+
+function renderStyleOptions(): void {
+  styleOptions.replaceChildren()
+  for (const summary of styleSummaries) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.dataset.styleId = summary.id
+    button.className = summary.id === currentStyleId ? 'active' : ''
+    button.setAttribute('aria-pressed', String(summary.id === currentStyleId))
+    const swatch = document.createElement('span')
+    swatch.className = 'style-swatch'
+    swatch.setAttribute('aria-hidden', 'true')
+    const copy = document.createElement('span')
+    const name = document.createElement('strong')
+    const description = document.createElement('small')
+    name.textContent = summary.name
+    description.textContent = summary.description
+    copy.append(name, description)
+    button.append(swatch, copy)
+    button.addEventListener('click', () => void switchStyle(summary.id))
+    styleOptions.append(button)
+  }
+}
+
+function setActiveView(viewId: string): void {
+  for (const peer of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+    const active = peer.dataset.view === viewId
+    peer.classList.toggle('active', active)
+    peer.setAttribute('aria-pressed', String(active))
+  }
+}
+
+function renderRoomViews(layout: LayoutManifest): void {
+  roomViewOptions = buildRoomViewOptions(layout.rooms, layout.furnishedRoomIds)
+  roomViews.replaceChildren()
+  for (const option of roomViewOptions) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.dataset.view = option.id
+    button.textContent = option.label
+    button.addEventListener('click', () => applyView(option.id))
+    roomViews.append(button)
+  }
 }
 
 function frameModel(layout: LayoutManifest): void {
@@ -222,8 +321,14 @@ function color3(value: string): Color3 {
 }
 
 function clearStyle(): void {
-  for (const assetContainer of styledAssetContainers) assetContainer.dispose()
-  for (const mesh of styledMeshes) mesh.dispose(false, false)
+  for (const assetContainer of styledAssetContainers) {
+    for (const mesh of assetContainer.meshes) shadows.removeShadowCaster(mesh, true)
+    assetContainer.dispose()
+  }
+  for (const mesh of styledMeshes) {
+    shadows.removeShadowCaster(mesh, true)
+    mesh.dispose(false, false)
+  }
   for (const material of styledMaterials) material.dispose()
   styledMeshes = []
   styledMaterials = []
@@ -259,6 +364,8 @@ function createFallback(
   mesh.position.set(placement.position[0], floorTop + placement.position[1], placement.position[2])
   mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
   mesh.material = material
+  mesh.receiveShadows = true
+  shadows.addShadowCaster(mesh, true)
   styledMeshes.push(mesh)
 }
 
@@ -266,6 +373,7 @@ async function loadCatalogModel(
   placement: LayoutManifest['placements'][number],
   asset: CatalogAsset,
   floorTop: number,
+  material: PBRMaterial,
 ): Promise<boolean> {
   if (asset.kind !== 'model' || !asset.delivery) return false
   try {
@@ -281,6 +389,12 @@ async function loadCatalogModel(
         placement.position[2],
       )
       rootMesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
+    }
+    for (const mesh of assetContainer.meshes) {
+      if (mesh.getTotalVertices() === 0) continue
+      mesh.material = material
+      mesh.receiveShadows = true
+      shadows.addShadowCaster(mesh, true)
     }
     assetContainer.addAllToScene()
     styledAssetContainers.push(assetContainer)
@@ -304,6 +418,7 @@ async function applyStyle(
       material.albedoColor = color3(value.baseColor)
       material.metallic = value.metallic
       material.roughness = value.roughness
+      material.environmentIntensity = 0.8
       styledMaterials.push(material)
       return [role, material]
     }),
@@ -311,7 +426,11 @@ async function applyStyle(
   const architecture = materials.architecture
   if (!architecture) throw new Error('风格包缺少建筑材质')
   for (const mesh of model.meshes) {
-    if (mesh.getTotalVertices() > 0) mesh.material = architecture
+    if (mesh.getTotalVertices() > 0) {
+      mesh.material = architecture
+      mesh.receiveShadows = true
+      shadows.addShadowCaster(mesh, true)
+    }
   }
 
   const bounds = modelBounds(model.meshes)
@@ -327,6 +446,7 @@ async function applyStyle(
   )
   floor.position.set(center.x, bounds.minimum.y - floorHeight / 2, center.z)
   floor.material = materials.floor ?? architecture
+  floor.receiveShadows = true
   styledMeshes.push(floor)
 
   const assets = new Map(catalog.assets.map((asset) => [asset.id, asset]))
@@ -336,7 +456,8 @@ async function applyStyle(
     layout.placements.map(async (placement) => {
       const asset = assets.get(placement.assetId)
       if (!asset) throw new Error(`自动布局引用了不存在的资产：${placement.assetId}`)
-      const loaded = await loadCatalogModel(placement, asset, bounds.minimum.y)
+      const material = materials[placement.role] ?? materials[asset.fallback.materialRole] ?? architecture
+      const loaded = await loadCatalogModel(placement, asset, bounds.minimum.y, material)
       if (loaded) {
         models += 1
         return
@@ -344,7 +465,7 @@ async function applyStyle(
       createFallback(
         placement,
         bounds.minimum.y,
-        materials[placement.role] ?? materials[asset.fallback.materialRole] ?? architecture,
+        material,
       )
       if (asset.kind === 'model') fallbacks += 1
     }),
@@ -370,7 +491,13 @@ async function getAssetCatalog(): Promise<AssetCatalog> {
   return parseAssetCatalog(await response.json())
 }
 
-async function getStylePack(): Promise<StylePack> {
+async function getStyleSummaries(): Promise<StyleSummary[]> {
+  const response = await fetch(apiUrl('/api/styles'), { cache: 'no-store' })
+  if (!response.ok) throw new Error(`风格目录服务请求失败（${response.status}）`)
+  return parseStyleSummaries(await response.json())
+}
+
+async function getStylePack(styleId: string): Promise<StylePack> {
   const response = await fetch(apiUrl(`/api/styles/${encodeURIComponent(styleId)}`), {
     cache: 'no-store',
   })
@@ -379,7 +506,7 @@ async function getStylePack(): Promise<StylePack> {
   return parseStylePack(await response.json())
 }
 
-async function getLayoutManifest(): Promise<LayoutManifest> {
+async function getLayoutManifest(styleId: string): Promise<LayoutManifest> {
   const response = await fetch(
     apiUrl(
       `/api/projects/${encodeURIComponent(projectId)}/layout?styleId=${encodeURIComponent(styleId)}`,
@@ -416,15 +543,16 @@ async function loadModel(): Promise<void> {
     if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(projectId)) {
       throw new Error('链接缺少有效的 project 参数')
     }
-    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(styleId)) {
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(currentStyleId)) {
       throw new Error('链接包含无效的 style 参数')
     }
     setStatus('正在读取模型', '检查最新发布版本…', 4)
-    const [manifest, style, layout, catalog] = await Promise.all([
+    const [manifest, style, layout, catalog, summaries] = await Promise.all([
       waitUntilReady(),
-      getStylePack(),
-      getLayoutManifest(),
+      getStylePack(currentStyleId),
+      getLayoutManifest(currentStyleId),
       getAssetCatalog(),
+      getStyleSummaries(),
     ])
     if (!manifest.optimized) throw new Error('模型产物尚未准备完成')
     if (
@@ -453,11 +581,87 @@ async function loadModel(): Promise<void> {
     })
     container.addAllToScene()
     const assetStats = await applyStyle(style, layout, catalog, container)
+    currentManifest = manifest
+    currentLayout = layout
+    currentCatalog = catalog
+    styleSummaries = summaries
     frameModel(layout)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
+    setActiveView('whole')
     setReady(manifest, style, layout, assetStats)
   } catch (error) {
+    setError(error)
+  }
+}
+
+function applyView(viewId: string): void {
+  if (!currentLayout) return
+  if (viewId === 'top') {
+    camera.alpha = -Math.PI / 2
+    camera.beta = 0.04
+    camera.setTarget(defaultTarget)
+    camera.radius = defaultRadius
+  } else if (viewId === 'whole') {
+    camera.alpha = perspectiveAlpha
+    camera.beta = perspectiveBeta
+    camera.setTarget(defaultTarget)
+    camera.radius = defaultRadius
+  } else {
+    const option = roomViewOptions.find((candidate) => candidate.id === viewId)
+    const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
+    if (!room) return
+    const preset = roomCameraPreset(room)
+    camera.alpha = perspectiveAlpha
+    camera.beta = Math.max(perspectiveBeta, Math.PI * 0.38)
+    camera.setTarget(Vector3.FromArray(preset.target))
+    const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
+    camera.radius = preset.radius * Math.max(1, 0.72 / aspect)
+  }
+  setActiveView(viewId)
+}
+
+async function switchStyle(styleId: string): Promise<void> {
+  if (
+    switchingStyle ||
+    styleId === currentStyleId ||
+    !currentManifest ||
+    !currentCatalog ||
+    !container
+  ) {
+    return
+  }
+  setStyleSwitching(true, '正在切换…')
+  try {
+    const [style, layout] = await Promise.all([
+      getStylePack(styleId),
+      getLayoutManifest(styleId),
+    ])
+    if (
+      layout.projectId !== currentManifest.projectId ||
+      layout.sceneRevision !== currentManifest.sceneRevision ||
+      layout.style.id !== style.id ||
+      layout.style.version !== style.version ||
+      layout.assetCatalog.id !== currentCatalog.id ||
+      layout.assetCatalog.version !== currentCatalog.version
+    ) {
+      throw new Error('新风格与当前户型版本不一致')
+    }
+    const assetStats = await applyStyle(style, layout, currentCatalog, container)
+    currentStyleId = style.id
+    currentLayout = layout
+    frameModel(layout)
+    camera.alpha = perspectiveAlpha
+    camera.beta = perspectiveBeta
+    setActiveView('whole')
+    window.history.replaceState(null, '', searchWithStyle(window.location.search, currentStyleId))
+    setReady(currentManifest, style, layout, assetStats)
+    setStyleSwitching(false, '已切换')
+    window.setTimeout(() => {
+      if (!switchingStyle) styleSwitchStatus.textContent = ''
+    }, 1400)
+  } catch (error) {
+    setStyleSwitching(false)
     setError(error)
   }
 }
@@ -468,22 +672,8 @@ element<HTMLButtonElement>('#fullscreen').addEventListener('click', async () => 
   else await shell.requestFullscreen()
 })
 
-for (const button of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
-  button.addEventListener('click', () => {
-    const view = button.dataset.view
-    if (view === 'top') {
-      camera.alpha = -Math.PI / 2
-      camera.beta = 0.04
-    } else {
-      camera.alpha = perspectiveAlpha
-      camera.beta = perspectiveBeta
-    }
-    camera.setTarget(defaultTarget)
-    camera.radius = defaultRadius
-    for (const peer of root.querySelectorAll('[data-view]')) peer.classList.remove('active')
-    if (view !== 'reset') button.classList.add('active')
-    else element('[data-view="perspective"]').classList.add('active')
-  })
+for (const button of root.querySelectorAll<HTMLButtonElement>('.view-controls > [data-view]')) {
+  button.addEventListener('click', () => applyView(button.dataset.view ?? 'whole'))
 }
 
 window.addEventListener('resize', () => {

@@ -56,6 +56,7 @@
 - [双人复核与评测样本晋级](docs/adr/0014-double-review-and-sample-promotion.md)
 - [前台有效标注时间自动计时](docs/adr/0015-active-annotation-timing.md)
 - [真实评测样本生产看板](docs/adr/0016-recognition-sample-production-board.md)
+- [客户实时 3D 样板间](docs/adr/0017-customer-realtime-showroom.md)
 
 ## 仓库结构
 
@@ -70,5 +71,5 @@ outputs/              立项与交付文档
 
 ## 下一步
 
-下一阶段依据批量生产看板，完成更多现代住宅候选的人工筛选与权利签署，并使用已打通的标注、
-自动计时、双人复核和晋级链路制作首批合法真实样本，再量化门窗、斜墙和房间语义基线。
+下一阶段以客户实时样板间为产品主线，扩充更精细的商业级家具、门窗、灯具与软装资产；同时依据
+批量生产看板制作合法真实样本，量化并提升任意户型图自动生成完整 3D 场景的成功率。

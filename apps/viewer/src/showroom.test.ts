@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import {
+  buildRoomViewOptions,
+  parseStyleSummaries,
+  roomCameraPreset,
+  searchWithStyle,
+  type ShowroomRoom,
+} from './showroom.ts'
+
+const rooms: ShowroomRoom[] = [
+  {
+    id: 'living-large',
+    name: '客餐厅',
+    roomType: 'living',
+    polygon: [[0, 0], [6, 0], [6, 4], [0, 4]],
+    area: 24,
+    centroid: [3, 2],
+  },
+  {
+    id: 'living-small',
+    name: '起居室',
+    roomType: 'living',
+    polygon: [[0, 0], [3, 0], [3, 3], [0, 3]],
+    area: 9,
+    centroid: [1.5, 1.5],
+  },
+  {
+    id: 'bedroom',
+    name: '主卧',
+    roomType: 'bedroom',
+    polygon: [[6, 0], [10, 0], [10, 4], [6, 4]],
+    area: 16,
+    centroid: [8, 2],
+  },
+  {
+    id: 'storage',
+    name: '储物间',
+    roomType: 'other',
+    polygon: [[0, 4], [2, 4], [2, 6], [0, 6]],
+    area: 4,
+    centroid: [1, 5],
+  },
+]
+
+test('parses a unique non-empty style catalog', () => {
+  const parsed = parseStyleSummaries([
+    { id: 'warm-minimal', version: 2, name: '暖木极简', description: '柔和暖木风格' },
+    { id: 'nordic-light', version: 1, name: '北欧浅色', description: '明亮北欧风格' },
+  ])
+  assert.deepEqual(parsed.map((style) => style.id), ['warm-minimal', 'nordic-light'])
+  assert.throws(() => parseStyleSummaries([]), /风格目录/)
+  assert.throws(
+    () => parseStyleSummaries([
+      { id: 'warm-minimal', version: 1, name: 'A', description: 'A' },
+      { id: 'warm-minimal', version: 2, name: 'B', description: 'B' },
+    ]),
+    /风格目录条目/,
+  )
+})
+
+test('builds one view per furnished customer room type', () => {
+  assert.deepEqual(
+    buildRoomViewOptions(rooms, ['living-small', 'living-large', 'bedroom']),
+    [
+      { id: 'room:living-large', label: '客餐厅', roomId: 'living-large', roomType: 'living' },
+      { id: 'room:bedroom', label: '主卧', roomId: 'bedroom', roomType: 'bedroom' },
+    ],
+  )
+})
+
+test('frames a room and preserves the project parameter in share URLs', () => {
+  assert.deepEqual(roomCameraPreset(rooms[2]), { target: [8, 1.05, 2], radius: 4.0729350596345135 })
+  assert.equal(
+    searchWithStyle('?project=customer-home&style=warm-minimal', 'modern-contrast'),
+    '?project=customer-home&style=modern-contrast',
+  )
+  assert.throws(() => searchWithStyle('?project=customer-home', '../invalid'), /风格 id/)
+})
