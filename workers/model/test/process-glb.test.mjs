@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import { Document, NodeIO } from '@gltf-transform/core'
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
+import { MeshoptDecoder } from 'meshoptimizer'
 
 async function createTriangleGlb(path) {
   const document = new Document()
@@ -26,16 +28,19 @@ async function createTriangleGlb(path) {
     .setIndices(indices)
     .setMaterial(material)
   const mesh = document.createMesh('wall').addPrimitive(primitive)
-  const node = document
-    .createNode('wall')
-    .setMesh(mesh)
-    .setExtras({ pascalId: 'wall-test', kind: 'wall' })
+  const walls = Array.from({ length: 5 }, (_, index) =>
+    document
+      .createNode(`wall-${index + 1}`)
+      .setMesh(mesh)
+      .setTranslation([index * 3, 0, 0])
+      .setExtras({ pascalId: `wall-test-${index + 1}`, kind: 'wall' }),
+  )
   const helper = document.createNode('ground-helper').setMesh(mesh).setScale([1000, 1, 1000])
   const site = document
     .createNode('site')
     .setExtras({ pascalId: 'site-test', kind: 'site' })
-    .addChild(node)
     .addChild(helper)
+  for (const wall of walls) site.addChild(wall)
   document.createScene('floorplan').addChild(site)
   await new NodeIO().write(path, document)
 }
@@ -54,14 +59,40 @@ test('optimizes a GLB and reports verifiable metrics', async () => {
 
     assert.equal(result.status, 0, result.stderr)
     const report = JSON.parse(result.stdout)
-    assert.equal(report.source.nodes, 3)
+    assert.equal(report.source.nodes, 7)
     assert.equal(report.source.meshes, 1)
     assert.equal(report.source.materials, 1)
+    assert.equal(report.source.identityNodes, 6)
     assert.equal(report.optimized.meshes, 1)
-    assert.equal(report.optimized.nodes, 1)
+    assert.equal(report.optimized.nodes, 6)
+    assert.equal(report.optimized.identityNodes, 6)
     assert.match(report.source.sha256, /^[0-9a-f]{64}$/)
     assert.match(report.optimized.sha256, /^[0-9a-f]{64}$/)
     assert.ok(report.optimized.bytes > 0)
+
+    await MeshoptDecoder.ready
+    const document = await new NodeIO()
+      .registerExtensions(ALL_EXTENSIONS)
+      .registerDependencies({ 'meshopt.decoder': MeshoptDecoder })
+      .read(optimized)
+    const root = document.getRoot()
+    const wallNodes = root
+      .listNodes()
+      .filter((node) => node.getExtras().kind === 'wall')
+      .sort((left, right) => left.getName().localeCompare(right.getName()))
+    assert.equal(wallNodes.length, 5)
+    assert.deepEqual(
+      wallNodes.map((node) => node.getExtras().pascalId),
+      ['wall-test-1', 'wall-test-2', 'wall-test-3', 'wall-test-4', 'wall-test-5'],
+    )
+    assert.deepEqual(
+      wallNodes.map((node) => node.getWorldTranslation()[0]),
+      [0.5, 3.5, 6.5, 9.5, 12.5],
+    )
+    assert.equal(
+      root.listExtensionsUsed().some((extension) => extension.extensionName === 'EXT_mesh_gpu_instancing'),
+      false,
+    )
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

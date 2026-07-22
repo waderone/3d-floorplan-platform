@@ -32,6 +32,14 @@ from .artifacts import (
     validate_glb,
 )
 from .assets import AssetCatalog, AssetCatalogManifest
+from .baselines import (
+    BaselineInputAsset,
+    BaselineLayoutReference,
+    BaselineManifest,
+    BaselineStore,
+    build_baseline_scene,
+    build_structural_glb,
+)
 from .layouts import LayoutManifest, generate_layout
 from .renders import (
     BlenderRenderer,
@@ -218,6 +226,7 @@ def create_app(
     render_backend = renderer or BlenderRenderer()
     recognition_store = RecognitionStore(root / "recognitions")
     floorplan_recognizer = recognition_backend or OpenCvRecognitionBackend()
+    baseline_store = BaselineStore(root / "baselines")
 
     app = FastAPI(title="3D Floorplan API", version="0.7.0")
     app.state.data_dir = root
@@ -225,6 +234,7 @@ def create_app(
     app.state.asset_catalog = asset_catalog
     app.state.render_profile_catalog = render_profile_catalog
     app.state.recognition_store = recognition_store
+    app.state.baseline_store = baseline_store
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -249,6 +259,115 @@ def create_app(
         name="catalog-assets",
     )
 
+    def store_image_asset(content: bytes, declared_type: str | None) -> AssetMetadata:
+        if len(content) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Image exceeds the 20 MiB upload limit")
+        media_type, extension = _detect_image(content, declared_type)
+        digest = hashlib.sha256(content).hexdigest()
+        target = assets_dir / f"{digest}.{extension}"
+        with asset_lock:
+            if not target.exists():
+                temporary = assets_dir / f".{digest}.{extension}.tmp"
+                temporary.write_bytes(content)
+                temporary.replace(target)
+        return AssetMetadata(
+            assetId=digest,
+            url=f"/assets/{target.name}",
+            mediaType=media_type,
+            size=len(content),
+        )
+
+    def process_baseline(job_id: str) -> None:
+        manifest = baseline_store.load(job_id)
+        if manifest is None:
+            return
+        try:
+            recognition, should_process = recognition_store.begin(
+                manifest.project_id,
+                1,
+                manifest.input_asset.asset_id,
+                manifest.plan_width_meters,
+            )
+            if should_process:
+                recognition_store.process(
+                    recognition.recognition_id,
+                    floorplan_recognizer,
+                    assets_dir / manifest.input_asset.url.rsplit("/", maxsplit=1)[-1],
+                )
+            recognition = recognition_store.load(recognition.recognition_id)
+            if recognition is None or recognition.status != "review_required":
+                error = recognition.error if recognition is not None else "recognition disappeared"
+                raise RuntimeError(error or "recognition did not produce reviewable geometry")
+            scene_graph, room_types = build_baseline_scene(recognition, manifest.input_asset)
+            baseline_store.update(
+                job_id,
+                stage="scene",
+                recognition_id=recognition.recognition_id,
+                recognition_pipeline_version=recognition.pipeline_version,
+                recognition_confidence=recognition.confidence,
+                auto_room_types=room_types,
+            )
+            saved, _ = store.save(
+                manifest.project_id,
+                SceneSaveRequest(
+                    schemaVersion="1.0",
+                    revision=1,
+                    expectedRevision=1,
+                    units="m",
+                    scene=scene_graph,
+                    assets=[manifest.input_asset.model_dump(by_alias=True)],
+                ),
+            )
+            baseline_store.update(job_id, stage="artifact", scene_revision=saved.revision)
+            source_glb = build_structural_glb(saved.scene.nodes)
+            artifact, should_optimize = artifact_store.begin(
+                manifest.project_id,
+                saved.revision,
+                source_glb,
+            )
+            if should_optimize:
+                artifact_store.process(artifact.artifact_id, artifact_optimizer)
+            artifact = artifact_store.load(artifact.artifact_id)
+            if artifact is None or artifact.status != "ready":
+                error = artifact.error if artifact is not None else "artifact disappeared"
+                raise RuntimeError(error or "generated model optimization failed")
+            baseline_store.update(
+                job_id,
+                stage="layout",
+                artifact_id=artifact.artifact_id,
+            )
+            layout_references: list[BaselineLayoutReference] = []
+            for summary in style_catalog.list():
+                style = style_catalog.get(summary.id)
+                if style is None:
+                    raise RuntimeError(f"style disappeared during baseline: {summary.id}")
+                layout = generate_layout(
+                    manifest.project_id,
+                    saved.revision,
+                    saved.scene.nodes,
+                    style,
+                    asset_catalog,
+                )
+                if not layout.furnished_room_ids:
+                    raise RuntimeError(f"baseline layout has no furnished rooms: {style.id}")
+                layout_references.append(
+                    BaselineLayoutReference(
+                        styleId=style.id,
+                        layoutId=layout.layout_id,
+                        status=layout.status,
+                    )
+                )
+            baseline_store.update(
+                job_id,
+                status="ready",
+                stage="ready",
+                layouts=layout_references,
+                viewer_url=f"/?project={manifest.project_id}&style=warm-minimal",
+                error=None,
+            )
+        except Exception as error:
+            baseline_store.fail(job_id, error)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -260,24 +379,64 @@ def create_app(
         finally:
             await file.close()
 
-        if len(content) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="Image exceeds the 20 MiB upload limit")
+        return store_image_asset(content, file.content_type)
 
-        media_type, extension = _detect_image(content, file.content_type)
-        digest = hashlib.sha256(content).hexdigest()
-        target = assets_dir / f"{digest}.{extension}"
-        with asset_lock:
-            if not target.exists():
-                temporary = assets_dir / f".{digest}.{extension}.tmp"
-                temporary.write_bytes(content)
-                temporary.replace(target)
-
-        return AssetMetadata(
-            assetId=digest,
-            url=f"/assets/{target.name}",
-            mediaType=media_type,
-            size=len(content),
+    @app.post(
+        "/api/projects/{project_id}/baselines",
+        response_model=BaselineManifest,
+        status_code=202,
+    )
+    async def create_baseline(
+        project_id: ProjectId,
+        background_tasks: BackgroundTasks,
+        file: Annotated[UploadFile, File()],
+        plan_width_meters: Annotated[float, Form(alias="planWidthMeters", gt=0, le=500)],
+    ) -> BaselineManifest:
+        if store.load(project_id) is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "baseline_project_exists", "projectId": project_id},
+            )
+        try:
+            content = await file.read(MAX_UPLOAD_BYTES + 1)
+        finally:
+            await file.close()
+        asset = store_image_asset(content, file.content_type)
+        initial_scene = SceneSaveRequest(
+            schemaVersion="1.0",
+            revision=0,
+            expectedRevision=None,
+            units="m",
+            scene={"nodes": {}, "rootNodeIds": [], "collections": {}, "materials": {}},
+            assets=[asset],
         )
+        try:
+            store.save(project_id, initial_scene)
+        except RevisionConflict as conflict:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "baseline_project_exists", "projectId": project_id},
+            ) from conflict
+        manifest = baseline_store.begin(
+            project_id,
+            BaselineInputAsset.model_validate(asset.model_dump(by_alias=True)),
+            plan_width_meters,
+        )
+        background_tasks.add_task(process_baseline, manifest.job_id)
+        return manifest
+
+    @app.get(
+        "/api/projects/{project_id}/baselines/latest",
+        response_model=BaselineManifest,
+    )
+    def get_latest_baseline(project_id: ProjectId) -> BaselineManifest:
+        manifest = baseline_store.load_latest(project_id)
+        if manifest is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "baseline_not_found", "projectId": project_id},
+            )
+        return manifest
 
     @app.get("/api/projects/{project_id}/scene", response_model=SceneEnvelope)
     def get_scene(project_id: ProjectId) -> SceneEnvelope:

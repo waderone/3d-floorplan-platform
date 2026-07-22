@@ -12,7 +12,8 @@ npm install
 npm run dev
 ```
 
-访问 `http://localhost:4173/?project=<projectId>&style=warm-minimal`。开发服务器会代理 `/api`、
+访问 `http://localhost:4173/` 可上传户型图并自动跳转到生成后的实时 3D；已有项目也可直接访问
+`http://localhost:4173/?project=<projectId>&style=warm-minimal`。开发服务器会代理 `/api`、
 `/artifacts` 和 `/catalog-assets`；独立部署时用 `VITE_API_BASE_URL` 指定 API origin。
 
 Viewer 面向客户提供全屋/鸟瞰和按实际 layout 动态生成的客厅、餐厅、卧室入口，支持鼠标与
@@ -33,6 +34,10 @@ layout v3 从 Pascal 权威 Door/Window 派生门扇开启区和窗边接近区�
 1× MSAA/1024 阴影并限制像素倍率。模型、风格、layout 和目录的 project/revision/version
 不一致会明确失败；单个真实模型加载失败时使用目录声明的程序化回退并显示统计，layout fallback
 则保留建筑预览并提示缺失房间语义或尺寸。
+
+Viewer 与场景/风格契约统一使用米制、右手坐标、Y-up、XZ 地面。Babylon Scene 显式启用
+右手坐标，避免 glTF Loader 在左手模式下增加根节点翻转后造成结构与布局家具错位。多个语义
+墙节点可以共享同一 glTF mesh，Viewer 显式加载 Babylon `InstancedMesh` 支持模块。
 
 ```bash
 npm test

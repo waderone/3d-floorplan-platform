@@ -27,6 +27,9 @@ async function inspectGlb(path) {
   })
   const document = await io.read(path)
   const root = document.getRoot()
+  const identityNodes = root
+    .listNodes()
+    .filter((node) => typeof node.getExtras().pascalId === 'string').length
   return {
     sha256: await sha256(path),
     bytes: (await stat(path)).size,
@@ -34,6 +37,7 @@ async function inspectGlb(path) {
     meshes: root.listMeshes().length,
     materials: root.listMaterials().length,
     primitives: root.listMeshes().reduce((total, mesh) => total + mesh.listPrimitives().length, 0),
+    identityNodes,
   }
 }
 
@@ -84,6 +88,12 @@ async function main() {
         'meshopt',
         '--texture-size',
         '2048',
+        '--instance',
+        'false',
+        '--flatten',
+        'false',
+        '--join',
+        'false',
       ],
       { encoding: 'utf8' },
     )
@@ -96,6 +106,11 @@ async function main() {
     await unlink(preparedPath).catch(() => undefined)
   }
   const result = await inspectGlb(outputPath)
+  if (result.identityNodes !== source.identityNodes) {
+    throw new Error(
+      `GLB optimization changed Pascal identity nodes: ${source.identityNodes} -> ${result.identityNodes}`,
+    )
+  }
   process.stdout.write(`${JSON.stringify({ source, optimized: result })}\n`)
 }
 

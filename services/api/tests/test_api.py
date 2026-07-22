@@ -495,7 +495,7 @@ def test_glb_artifact_is_optimized_and_served(client: TestClient) -> None:
     payload = manifest.json()
     assert payload["status"] == "ready"
     assert payload["sceneRevision"] == 1
-    assert payload["pipelineVersion"] == "gltf-transform-4.4.1-pascal-v3"
+    assert payload["pipelineVersion"] == "gltf-transform-4.4.1-pascal-v4"
     assert payload["source"]["bytes"] == len(content)
     assert payload["source"]["statistics"]["nodes"] == 1
     assert payload["optimized"]["statistics"]["meshes"] == 1

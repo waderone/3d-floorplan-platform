@@ -8,6 +8,7 @@ import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imagePro
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression'
+import '@babylonjs/core/Meshes/instancedMesh'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
@@ -16,6 +17,12 @@ import type { AssetContainer } from '@babylonjs/core/assetContainer'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import meshoptDecoderSource from '../node_modules/meshoptimizer/meshopt_decoder.cjs?raw'
 import { parseAssetCatalog, type AssetCatalog, type CatalogAsset } from './asset-catalog'
+import {
+  baselineStageText,
+  isProjectId,
+  parseBaselineManifest,
+  type BaselineManifest,
+} from './baseline'
 import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
 import {
@@ -60,6 +67,18 @@ root.innerHTML = `
       <div class="style-options" id="style-options"></div>
       <p id="style-description">正在读取可用方案…</p>
     </aside>
+    <section class="intake-panel" id="intake-panel" aria-labelledby="intake-title" hidden>
+      <span class="eyebrow">FLOORPLAN TO 3D</span>
+      <h1 id="intake-title">上传户型图，生成可浏览的 3D 方案</h1>
+      <p>当前基准适合边界清晰的直墙户型图。填写图纸外边界实际宽度，系统会自动识别、建模并生成三套可切换风格。</p>
+      <form id="baseline-form">
+        <label>方案标识<input id="baseline-project" name="project" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" /></label>
+        <label>户型外宽（米）<input id="baseline-width" name="planWidthMeters" required type="number" min="1" max="500" step="0.01" value="10" /></label>
+        <label class="file-field">户型图（PNG/JPG）<input id="baseline-file" name="file" required type="file" accept="image/png,image/jpeg" /></label>
+        <button type="submit">生成实时 3D 方案</button>
+      </form>
+      <small>基准会自动接受高可读性的结构建议；门窗、曲墙和房间语义仍会作为限制明确记录。</small>
+    </section>
     <div class="status-panel" id="status-panel" role="status" aria-live="polite">
       <div class="spinner" aria-hidden="true"></div>
       <div><strong id="status-title">正在读取模型</strong><span id="status-detail">连接到模型服务…</span></div>
@@ -103,10 +122,16 @@ const styleDescription = element<HTMLElement>('#style-description')
 const styleSwitchStatus = element<HTMLElement>('#style-switch-status')
 const roomViews = element<HTMLElement>('#room-views')
 const clearancesButton = element<HTMLButtonElement>('#clearances')
+const intakePanel = element<HTMLElement>('#intake-panel')
+const baselineForm = element<HTMLFormElement>('#baseline-form')
+const baselineProject = element<HTMLInputElement>('#baseline-project')
+const baselineWidth = element<HTMLInputElement>('#baseline-width')
+const baselineFile = element<HTMLInputElement>('#baseline-file')
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
 let currentStyleId = new URLSearchParams(window.location.search).get('style') ?? 'warm-minimal'
+baselineProject.value = `home-${Date.now().toString(36)}`
 const compactDevice = window.matchMedia('(max-width: 700px), (pointer: coarse)').matches
 const engine = new Engine(canvas, true, { adaptToDeviceRatio: true, stencil: true })
 engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (compactDevice ? 1.25 : 1.6)))
@@ -115,6 +140,7 @@ const meshoptDecoderUrl = URL.createObjectURL(
 )
 MeshoptCompression.Configuration = { decoder: { url: meshoptDecoderUrl } }
 const scene = new Scene(engine)
+scene.useRightHandedSystem = true
 scene.clearColor = new Color4(0.91, 0.9, 0.86, 1)
 
 const camera = new ArcRotateCamera(
@@ -197,6 +223,75 @@ function setError(error: unknown): void {
   statusPanel.hidden = true
   errorPanel.hidden = false
   errorMessage.textContent = error instanceof Error ? error.message : '发生未知错误'
+}
+
+function showBaselineIntake(): void {
+  shell.dataset.state = 'intake'
+  intakePanel.hidden = false
+  statusPanel.hidden = true
+  errorPanel.hidden = true
+  document.title = '户型图生成 3D 全屋方案'
+}
+
+function baselineProgress(manifest: BaselineManifest): number {
+  return { recognition: 20, scene: 44, artifact: 68, layout: 88, ready: 100, failed: 0 }[
+    manifest.stage
+  ]
+}
+
+async function waitForBaseline(project: string): Promise<BaselineManifest> {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const response = await fetch(
+      apiUrl(`/api/projects/${encodeURIComponent(project)}/baselines/latest`),
+      { cache: 'no-store' },
+    )
+    if (!response.ok) throw new Error(`自动生成状态请求失败（${response.status}）`)
+    const manifest = parseBaselineManifest(await response.json())
+    setStatus(baselineStageText(manifest.stage), '正在把户型图转换为客户可浏览的实时方案…', baselineProgress(manifest))
+    if (manifest.status === 'failed') throw new Error(manifest.error ?? '自动生成未完成')
+    if (manifest.status === 'ready') return manifest
+    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+  }
+  throw new Error('自动生成超时，请稍后使用同一方案标识查询')
+}
+
+async function createBaseline(): Promise<void> {
+  const project = baselineProject.value.trim()
+  const file = baselineFile.files?.[0]
+  const width = Number(baselineWidth.value)
+  if (!isProjectId(project)) throw new Error('方案标识只能包含字母、数字、短横线或下划线')
+  if (!file) throw new Error('请选择 PNG 或 JPG 户型图')
+  if (!(Number.isFinite(width) && width >= 1 && width <= 500)) {
+    throw new Error('请输入 1～500 米之间的户型外宽')
+  }
+  intakePanel.hidden = true
+  setStatus('正在提交户型图', '创建自动识别与 3D 生成任务…', 6)
+  const data = new FormData()
+  data.set('file', file)
+  data.set('planWidthMeters', String(width))
+  const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(project)}/baselines`), {
+    method: 'POST',
+    body: data,
+  })
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null)
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'detail' in body &&
+      typeof body.detail === 'object' &&
+      body.detail !== null &&
+      'code' in body.detail &&
+      body.detail.code === 'baseline_project_exists'
+    ) {
+      throw new Error('这个方案标识已经存在，请换一个新的标识')
+    }
+    throw new Error(`户型图提交失败（${response.status}）`)
+  }
+  parseBaselineManifest(await response.json())
+  const ready = await waitForBaseline(project)
+  if (!ready.viewerUrl) throw new Error('自动生成完成但缺少客户浏览链接')
+  window.location.assign(ready.viewerUrl)
 }
 
 function setReady(
@@ -709,7 +804,14 @@ async function switchStyle(styleId: string): Promise<void> {
   }
 }
 
-element<HTMLButtonElement>('#retry').addEventListener('click', () => void loadModel())
+element<HTMLButtonElement>('#retry').addEventListener('click', () => {
+  if (projectId) void loadModel()
+  else showBaselineIntake()
+})
+baselineForm.addEventListener('submit', (event) => {
+  event.preventDefault()
+  void createBaseline().catch(setError)
+})
 element<HTMLButtonElement>('#fullscreen').addEventListener('click', async () => {
   if (document.fullscreenElement) await document.exitFullscreen()
   else await shell.requestFullscreen()
@@ -729,4 +831,5 @@ window.addEventListener('resize', () => {
   if (followsDefault) camera.radius = defaultRadius
 })
 engine.runRenderLoop(() => scene.render())
-void loadModel()
+if (projectId) void loadModel()
+else showBaselineIntake()

@@ -3,6 +3,7 @@
 户型编辑闭环的最小 FastAPI PoC，当前仅提供：
 
 - JPG/PNG 资产上传和稳定的 `/assets/...` 访问地址；
+- 单次户型图上传到三风格实时 3D 的主线 baseline 任务；
 - 按项目保存、读取场景 JSON；
 - 基于 `expectedRevision` 的乐观并发控制；
 - 场景图节点引用和资产元数据的最小边界校验；
@@ -70,6 +71,22 @@ Content-Type 和文件头，仅接受 `image/jpeg` 和 `image/png`，单文件�
 ```
 
 内容相同的文件总是得到相同 URL，原始文件名不用于落盘路径。
+
+### 单次上传生成实时 3D 基准
+
+- `POST /api/projects/{project_id}/baselines`
+- `GET /api/projects/{project_id}/baselines/latest`
+
+POST 使用 multipart 字段 `file` 和 `planWidthMeters`。接口先保存 revision 1 输入场景并返回
+HTTP 202，随后在同一后台任务中依次执行真实 OpenCV 识别、结构建议自动接受、revision 2
+权威 Wall/Zone 场景、结构 GLB、语义安全优化和三套风格布局。latest manifest 的 stage 会在
+`recognition`、`scene`、`artifact`、`layout` 间推进，最终为
+`ready` 或带明确 error 的 `failed`。
+
+ready manifest 包含识别置信度、自动接受的建议数量、房型映射、场景 revision、artifact、
+三套 layout 状态和 `viewerUrl`。同一项目标识不可覆盖，重复创建返回 HTTP 409。当前 baseline
+只自动接受可读的直墙/闭合房间建议；门窗、曲墙和可靠房间语义仍属于明确限制，不能替代人工
+复核工作流。生产环境需要把同进程任务迁移到队列，但保持相同 manifest 契约。
 
 ### 场景读写
 

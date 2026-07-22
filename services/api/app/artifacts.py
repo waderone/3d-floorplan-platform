@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 MAX_GLB_UPLOAD_BYTES = 80 * 1024 * 1024
 MOBILE_GLB_BUDGET_BYTES = 15 * 1024 * 1024
-PIPELINE_VERSION = "gltf-transform-4.4.1-pascal-v3"
+PIPELINE_VERSION = "gltf-transform-4.4.1-pascal-v4"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
