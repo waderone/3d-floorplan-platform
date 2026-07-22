@@ -1,4 +1,4 @@
-export type RoomType = 'living' | 'dining' | 'bedroom' | 'other'
+export type RoomType = 'living' | 'dining' | 'bedroom' | 'kitchen' | 'bathroom' | 'other'
 export type PrimitiveKind = 'box' | 'cylinder' | 'sphere'
 
 export interface CatalogAsset {

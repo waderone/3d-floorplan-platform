@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-RoomType = Literal["living", "dining", "bedroom", "other"]
+RoomType = Literal["living", "dining", "bedroom", "kitchen", "bathroom", "other"]
 PrimitiveKind = Literal["box", "cylinder", "sphere"]
 
 
@@ -114,7 +114,10 @@ class AssetCatalogManifest(BaseModel):
     mobile_budget_bytes: int = Field(alias="mobileBudgetBytes", gt=0)
     sources: list[CatalogSource] = Field(min_length=1)
     assets: list[CatalogAsset] = Field(min_length=1)
-    room_recipes: dict[Literal["living", "dining", "bedroom"], list[RoomRecipePlacement]] = Field(
+    room_recipes: dict[
+        Literal["living", "dining", "bedroom", "kitchen", "bathroom"],
+        list[RoomRecipePlacement],
+    ] = Field(
         alias="roomRecipes"
     )
 
@@ -131,7 +134,7 @@ class AssetCatalogManifest(BaseModel):
         for asset in self.assets:
             if asset.source_id is not None and asset.source_id not in known_source_ids:
                 raise ValueError(f"asset references missing source: {asset.source_id}")
-        for room_type in ("living", "dining", "bedroom"):
+        for room_type in ("living", "dining", "bedroom", "kitchen", "bathroom"):
             recipe = self.room_recipes.get(room_type)
             if not recipe:
                 raise ValueError(f"catalog requires a {room_type} recipe")

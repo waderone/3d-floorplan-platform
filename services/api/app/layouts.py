@@ -12,7 +12,7 @@ from .assets import AssetCatalog, RoomType
 from .styles import StylePack, StylePlacement
 
 
-LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v4"
+LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v5"
 Point2D = tuple[float, float]
 
 
@@ -62,6 +62,7 @@ class LayoutOpening(BaseModel):
     level_id: str | None = Field(alias="levelId")
     room_ids: list[str] = Field(alias="roomIds")
     center: Point2D
+    tangent: Point2D
     width: float = Field(gt=0)
     height: float = Field(gt=0)
     sill_height: float = Field(alias="sillHeight", ge=0)
@@ -75,7 +76,7 @@ class LayoutManifest(BaseModel):
 
     schema_version: Literal["3.0"] = Field(alias="schemaVersion")
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
-    pipeline_version: Literal["multiroom-opening-clearance-layout-v4"] = Field(
+    pipeline_version: Literal["multiroom-opening-clearance-layout-v5"] = Field(
         alias="pipelineVersion"
     )
     project_id: str = Field(alias="projectId")
@@ -170,13 +171,17 @@ def _parse_polygon(value: Any, minimum_area: float = 4) -> list[Point2D] | None:
 
 def _classify_room(node: dict[str, Any], name: str) -> RoomType:
     explicit = node.get("roomType")
-    if explicit in {"living", "dining", "bedroom", "other"}:
+    if explicit in {"living", "dining", "bedroom", "kitchen", "bathroom", "other"}:
         return explicit
     normalized = "".join(name.lower().split())
     if any(keyword in normalized for keyword in ("客餐", "livingdining")):
         return "living"
     if any(keyword in normalized for keyword in ("卧室", "主卧", "次卧", "bedroom")):
         return "bedroom"
+    if any(keyword in normalized for keyword in ("厨房", "厨区", "kitchen")):
+        return "kitchen"
+    if any(keyword in normalized for keyword in ("卫生间", "浴室", "洗手间", "bathroom")):
+        return "bathroom"
     if any(keyword in normalized for keyword in ("餐厅", "餐区", "dining")):
         return "dining"
     if any(keyword in normalized for keyword in ("客厅", "起居", "living", "lounge")):
@@ -394,6 +399,7 @@ def extract_openings(
                 levelId=level_id,
                 roomIds=room_ids,
                 center=center,
+                tangent=tangent,
                 width=width,
                 height=height,
                 sillHeight=max(0.0, position[1] - height / 2),
@@ -677,6 +683,22 @@ def _template_variants(
     template: list[StylePlacement],
 ) -> list[list[StylePlacement]]:
     variants = [template]
+    if room.room_type == "living":
+        no_chair = [
+            placement
+            for placement in template
+            if placement.item_id != "living-chair-west"
+        ]
+        if no_chair != template:
+            variants.append(no_chair)
+        compact_living = [
+            placement
+            for placement in no_chair
+            if placement.item_id != "living-planter"
+        ]
+        if compact_living != no_chair:
+            variants.append(compact_living)
+        return variants
     if room.room_type != "bedroom":
         return variants
     compact: list[StylePlacement] = []

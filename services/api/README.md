@@ -106,8 +106,8 @@ python -m app.reviewed_showrooms ../../datasets/recognition/manifest.json \
 ```
 
 成功报告给出 `viewerUrl`、15/7/7 真值计数、artifact 身份以及每种风格的已布置房间、陈设与
-门洞数量。已存在但内容不同的项目会明确拒绝覆盖；厨房、卫生间等当前目录尚无审计家具配方的
-空间会保留真实结构与原始房型 metadata，并诚实列为未布置。
+门洞数量。已存在但内容不同的项目会明确拒绝覆盖；资产目录 v4 已为厨房和卫生间提供审计
+配方，当前真实样板可布置客厅、三间卧室、厨房和卫生间，停车区仍诚实列为未布置。
 
 ### 场景读写
 
@@ -188,16 +188,18 @@ denoise、HDRI 与 PBR 木地板，输出鸟瞰/客厅/卧室三视角。未知�
 
 接口返回 HTTP 202 和 processing manifest；后台完成后 latest 变为 ready 或 failed。
 ready 保留兼容字段 `output`，同时记录 `profile`、`device`、总耗时、`views[]`，以及同一
-layout v4 的 opening/ignored/blocked 数量和净空验证状态。
+layout v5 的 opening/ignored/blocked 数量和净空验证状态。
 每个视角都有独立 PNG URL、SHA-256、字节数、尺寸与渲染耗时；`output` 恒等于
 第一个鸟瞰视角，旧客户仍可继续访问 `/renders/.../image.png`。
 
 layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。房型优先使用显式
 `roomType`，缺失时按受控中英文名称分类。返回 `ready`、`partial` 或 `fallback`，包含全部
 候选房间、已布置/未布置房间、带 `roomId`/`assetId` 的绝对坐标、目录版本以及唯一真实
-模型的移动端字节预算。layout v4 还从直线 Wall 的权威 Door/Window 生成世界坐标净空多边形，
+模型的移动端字节预算。layout v5 还从直线 Wall 的权威 Door/Window 生成世界坐标净空多边形
+和单位切线，
 用 0.25 m 有界候选搜索避让；曲墙/孤儿开口列入 ignored，全部候选被开口阻断的房间显式列出。
-完整卧室配方放不下时，v4 只降级到经过审计的床、地毯和吊灯核心组合，仍执行相同的房间边界、
+完整卧室配方放不下时，v5 只降级到经过审计的床、地毯和吊灯核心组合；客厅按完整、移除单椅、
+再移除绿植的顺序降级，仍执行相同的房间边界、
 墙净空和门洞净空验证。
 真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender 加载失败时按目录声明创建
 程序化回退并记录数量。

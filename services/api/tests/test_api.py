@@ -542,7 +542,7 @@ def test_style_catalog_is_listed_and_served(client: TestClient) -> None:
     ]
     assert style.status_code == 200
     assert style.json()["schemaVersion"] == "1.1"
-    assert style.json()["version"] == 2
+    assert style.json()["version"] == 3
     assert style.json()["materials"]["architecture"]["baseColor"] == "#F3EADF"
     assert style.json()["assets"][0]["source"] == "project-authored"
     assert client.get("/api/styles/missing-style").status_code == 404
@@ -678,7 +678,7 @@ def test_render_is_deterministic_processed_and_served(client: TestClient) -> Non
     assert payload["status"] == "ready"
     assert payload["artifactId"] == artifact["artifactId"]
     assert payload["pipelineVersion"] == "blender-5x-quality-profiles-v7"
-    assert payload["style"] == {"id": "warm-minimal", "version": 2}
+    assert payload["style"] == {"id": "warm-minimal", "version": 3}
     assert len(payload["layoutId"]) == 64
     assert payload["layoutId"] == layout["layoutId"]
     assert payload["output"]["width"] == 1280

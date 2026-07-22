@@ -2,9 +2,11 @@ import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
 import { Engine } from '@babylonjs/core/Engines/engine'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import { PointLight } from '@babylonjs/core/Lights/pointLight'
 import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader'
 import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration'
+import { Material } from '@babylonjs/core/Materials/material'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCompression'
@@ -186,6 +188,8 @@ let container: AssetContainer | null = null
 let styledAssetContainers: AssetContainer[] = []
 let styledMeshes: AbstractMesh[] = []
 let styledMaterials: PBRMaterial[] = []
+let styledLights: PointLight[] = []
+let architectureMaterial: PBRMaterial | null = null
 let defaultTarget = Vector3.Zero()
 let baseRadius = 12
 let defaultRadius = 12
@@ -370,6 +374,20 @@ function setActiveView(viewId: string): void {
   }
 }
 
+function setArchitectureOpacity(opacity: number): void {
+  if (!architectureMaterial) return
+  architectureMaterial.alpha = opacity
+  architectureMaterial.transparencyMode = opacity < 1
+    ? Material.MATERIAL_ALPHABLEND
+    : Material.MATERIAL_OPAQUE
+}
+
+function setDoorDetailsVisible(visible: boolean): void {
+  for (const mesh of styledMeshes) {
+    if (mesh.name.startsWith('door-')) mesh.isVisible = visible
+  }
+}
+
 function renderRoomViews(layout: LayoutManifest): void {
   roomViewOptions = buildRoomViewOptions(layout.rooms, layout.furnishedRoomIds)
   roomViews.replaceChildren()
@@ -433,8 +451,11 @@ function clearStyle(): void {
     mesh.dispose(false, false)
   }
   for (const material of styledMaterials) material.dispose()
+  for (const light of styledLights) light.dispose()
   styledMeshes = []
   styledMaterials = []
+  styledLights = []
+  architectureMaterial = null
   styledAssetContainers = []
 }
 
@@ -459,6 +480,130 @@ function addOpeningClearanceGuides(layout: LayoutManifest, floorTop: number): vo
     outline.isVisible = openingClearancesVisible
     outline.isPickable = false
     styledMeshes.push(outline)
+  }
+}
+
+function registerDetailMesh(mesh: AbstractMesh, material: PBRMaterial, castsShadow = true): void {
+  mesh.material = material
+  mesh.receiveShadows = true
+  mesh.isPickable = false
+  if (castsShadow) shadows.addShadowCaster(mesh, true)
+  styledMeshes.push(mesh)
+}
+
+function addArchitecturalDetails(
+  layout: LayoutManifest,
+  floorTop: number,
+  materials: Record<string, PBRMaterial>,
+  style: StylePack,
+): void {
+  const architecture = materials.architecture
+  const wood = materials.wood ?? architecture
+  const metal = materials.metal ?? wood
+  if (!architecture) return
+
+  const seenEdges = new Set<string>()
+  for (const room of layout.rooms) {
+    for (let index = 0; index < room.polygon.length; index += 1) {
+      const start = room.polygon[index]!
+      const end = room.polygon[(index + 1) % room.polygon.length]!
+      const ordered = [start, end].sort((a, b) => a[0] - b[0] || a[1] - b[1])
+      const key = ordered.map((point) => point.map((entry) => entry.toFixed(3)).join(',')).join('|')
+      if (seenEdges.has(key)) continue
+      seenEdges.add(key)
+      const dx = end[0] - start[0]
+      const dz = end[1] - start[1]
+      const length = Math.hypot(dx, dz)
+      if (length < 0.18) continue
+      const baseboard = MeshBuilder.CreateBox(
+        `baseboard-${room.id}-${index}`,
+        { width: length, height: 0.11, depth: 0.035 },
+        scene,
+      )
+      baseboard.position.set((start[0] + end[0]) / 2, floorTop + 0.055, (start[1] + end[1]) / 2)
+      baseboard.rotation.y = -Math.atan2(dz, dx)
+      registerDetailMesh(baseboard, architecture)
+    }
+  }
+
+  for (const opening of layout.openings) {
+    const [tx, tz] = opening.tangent
+    const tangentLength = Math.hypot(tx, tz)
+    if (tangentLength < 1e-6) continue
+    const tangent = [tx / tangentLength, tz / tangentLength] as const
+    const normal = [-tangent[1], tangent[0]] as const
+    const angle = -Math.atan2(tangent[1], tangent[0])
+    const frameHeight = opening.sillHeight + opening.height
+    for (const side of [-1, 1]) {
+      const post = MeshBuilder.CreateBox(
+        `door-frame-${opening.id}-${side}`,
+        { width: 0.09, height: opening.height + 0.1, depth: 0.16 },
+        scene,
+      )
+      post.position.set(
+        opening.center[0] + tangent[0] * (opening.width / 2 + 0.035) * side,
+        floorTop + opening.sillHeight + opening.height / 2,
+        opening.center[1] + tangent[1] * (opening.width / 2 + 0.035) * side,
+      )
+      post.rotation.y = angle
+      registerDetailMesh(post, wood)
+    }
+    const header = MeshBuilder.CreateBox(
+      `door-header-${opening.id}`,
+      { width: opening.width + 0.16, height: 0.09, depth: 0.16 },
+      scene,
+    )
+    header.position.set(opening.center[0], floorTop + frameHeight + 0.045, opening.center[1])
+    header.rotation.y = angle
+    registerDetailMesh(header, wood)
+
+    if (opening.sourceType !== 'door' || opening.openingKind === 'opening') continue
+    const leafWidth = Math.max(0.45, opening.width - 0.1)
+    const openAngle = Math.PI / 7
+    const leafDirection = [
+      tangent[0] * Math.cos(openAngle) + normal[0] * Math.sin(openAngle),
+      tangent[1] * Math.cos(openAngle) + normal[1] * Math.sin(openAngle),
+    ] as const
+    const hinge = [
+      opening.center[0] - tangent[0] * leafWidth / 2,
+      opening.center[1] - tangent[1] * leafWidth / 2,
+    ] as const
+    const leaf = MeshBuilder.CreateBox(
+      `door-leaf-${opening.id}`,
+      { width: leafWidth, height: opening.height - 0.08, depth: 0.045 },
+      scene,
+    )
+    leaf.position.set(
+      hinge[0] + leafDirection[0] * leafWidth / 2,
+      floorTop + opening.height / 2,
+      hinge[1] + leafDirection[1] * leafWidth / 2,
+    )
+    leaf.rotation.y = -Math.atan2(leafDirection[1], leafDirection[0])
+    registerDetailMesh(leaf, wood)
+    const handle = MeshBuilder.CreateSphere(
+      `door-handle-${opening.id}`,
+      { diameter: 0.055, segments: 16 },
+      scene,
+    )
+    handle.position.set(
+      hinge[0] + leafDirection[0] * (leafWidth - 0.11) + normal[0] * 0.035,
+      floorTop + 1.0,
+      hinge[1] + leafDirection[1] * (leafWidth - 0.11) + normal[1] * 0.035,
+    )
+    registerDetailMesh(handle, metal)
+  }
+
+  const warmLight = Color3.FromHexString(style.id === 'warm-minimal' ? '#FFD1A0' : '#FFE4C7')
+  for (const room of layout.rooms.filter((candidate) => layout.furnishedRoomIds.includes(candidate.id))) {
+    const light = new PointLight(
+      `room-light-${room.id}`,
+      new Vector3(room.centroid[0], floorTop + 2.3, room.centroid[1]),
+      scene,
+    )
+    light.diffuse = warmLight
+    light.intensity = compactDevice ? 0.48 : 0.65
+    light.range = Math.max(3.2, Math.sqrt(room.area) * 1.7)
+    styledLights.push(light)
   }
 }
 
@@ -562,6 +707,7 @@ async function applyStyle(
   )
   const architecture = materials.architecture
   if (!architecture) throw new Error('风格包缺少建筑材质')
+  architectureMaterial = architecture
   for (const mesh of model.meshes) {
     if (mesh.getTotalVertices() > 0) {
       mesh.material = architecture
@@ -586,6 +732,7 @@ async function applyStyle(
   floor.material = materials.floor ?? architecture
   floor.receiveShadows = true
   styledMeshes.push(floor)
+  addArchitecturalDetails(layout, bounds.minimum.y, materials, style)
   addOpeningClearanceGuides(layout, bounds.minimum.y)
 
   const assets = new Map(catalog.assets.map((asset) => [asset.id, asset]))
@@ -737,11 +884,15 @@ async function loadModel(): Promise<void> {
 function applyView(viewId: string): void {
   if (!currentLayout) return
   if (viewId === 'top') {
+    setArchitectureOpacity(1)
+    setDoorDetailsVisible(true)
     camera.alpha = -Math.PI / 2
     camera.beta = 0.04
     camera.setTarget(defaultTarget)
     camera.radius = defaultRadius
   } else if (viewId === 'whole') {
+    setArchitectureOpacity(1)
+    setDoorDetailsVisible(true)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
     camera.setTarget(defaultTarget)
@@ -750,9 +901,15 @@ function applyView(viewId: string): void {
     const option = roomViewOptions.find((candidate) => candidate.id === viewId)
     const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
     if (!room) return
+    setArchitectureOpacity(0.16)
+    setDoorDetailsVisible(false)
     const preset = roomCameraPreset(room)
-    camera.alpha = perspectiveAlpha
-    camera.beta = Math.max(perspectiveBeta, Math.PI * 0.38)
+    const inwardX = defaultTarget.x - room.centroid[0]
+    const inwardZ = defaultTarget.z - room.centroid[1]
+    camera.alpha = Math.hypot(inwardX, inwardZ) > 0.4
+      ? Math.atan2(inwardZ, inwardX)
+      : perspectiveAlpha
+    camera.beta = Math.min(perspectiveBeta, Math.PI * 0.25)
     camera.setTarget(Vector3.FromArray(preset.target))
     const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
     camera.radius = preset.radius * Math.max(1, 0.72 / aspect)

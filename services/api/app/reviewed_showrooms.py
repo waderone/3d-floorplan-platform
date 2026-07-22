@@ -26,6 +26,8 @@ SUPPORTED_ROOM_TYPES: dict[str, RoomType] = {
     "living": "living",
     "dining": "dining",
     "bedroom": "bedroom",
+    "kitchen": "kitchen",
+    "bathroom": "bathroom",
 }
 ROOM_LABELS = {
     "living": "客厅",

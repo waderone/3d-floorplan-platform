@@ -41,6 +41,22 @@ const rooms: ShowroomRoom[] = [
     area: 4,
     centroid: [1, 5],
   },
+  {
+    id: 'kitchen',
+    name: '厨房',
+    roomType: 'kitchen',
+    polygon: [[2, 4], [5, 4], [5, 6], [2, 6]],
+    area: 6,
+    centroid: [3.5, 5],
+  },
+  {
+    id: 'bathroom',
+    name: '卫生间',
+    roomType: 'bathroom',
+    polygon: [[5, 4], [7, 4], [7, 6], [5, 6]],
+    area: 4,
+    centroid: [6, 5],
+  },
 ]
 
 test('parses a unique non-empty style catalog', () => {
@@ -61,11 +77,13 @@ test('parses a unique non-empty style catalog', () => {
 
 test('builds one view for every furnished customer room', () => {
   assert.deepEqual(
-    buildRoomViewOptions(rooms, ['living-small', 'living-large', 'bedroom']),
+    buildRoomViewOptions(rooms, ['living-small', 'living-large', 'bedroom', 'kitchen', 'bathroom']),
     [
       { id: 'room:living-large', label: '客餐厅', roomId: 'living-large', roomType: 'living' },
       { id: 'room:living-small', label: '起居室', roomId: 'living-small', roomType: 'living' },
       { id: 'room:bedroom', label: '主卧', roomId: 'bedroom', roomType: 'bedroom' },
+      { id: 'room:kitchen', label: '厨房', roomId: 'kitchen', roomType: 'kitchen' },
+      { id: 'room:bathroom', label: '卫生间', roomId: 'bathroom', roomType: 'bathroom' },
     ],
   )
 })

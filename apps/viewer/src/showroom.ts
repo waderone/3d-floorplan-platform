@@ -8,7 +8,7 @@ export interface StyleSummary {
 export interface ShowroomRoom {
   id: string
   name: string
-  roomType: 'living' | 'dining' | 'bedroom' | 'other'
+  roomType: 'living' | 'dining' | 'bedroom' | 'kitchen' | 'bathroom' | 'other'
   polygon: Array<[number, number]>
   area: number
   centroid: [number, number]
@@ -18,7 +18,7 @@ export interface RoomViewOption {
   id: string
   label: string
   roomId: string
-  roomType: 'living' | 'dining' | 'bedroom'
+  roomType: 'living' | 'dining' | 'bedroom' | 'kitchen' | 'bathroom'
 }
 
 export interface RoomCameraPreset {
@@ -27,8 +27,14 @@ export interface RoomCameraPreset {
 }
 
 const styleIdPattern = /^[a-z0-9][a-z0-9-]{0,63}$/
-const roomTypeOrder = ['living', 'dining', 'bedroom'] as const
-const roomTypeLabels = { living: '客厅', dining: '餐厅', bedroom: '卧室' } as const
+const roomTypeOrder = ['living', 'dining', 'bedroom', 'kitchen', 'bathroom'] as const
+const roomTypeLabels = {
+  living: '客厅',
+  dining: '餐厅',
+  bedroom: '卧室',
+  kitchen: '厨房',
+  bathroom: '卫生间',
+} as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

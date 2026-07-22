@@ -15,11 +15,13 @@
     "roomRecipes": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["living", "dining", "bedroom"],
+      "required": ["living", "dining", "bedroom", "kitchen", "bathroom"],
       "properties": {
         "living": {"$ref": "#/$defs/recipe"},
         "dining": {"$ref": "#/$defs/recipe"},
-        "bedroom": {"$ref": "#/$defs/recipe"}
+        "bedroom": {"$ref": "#/$defs/recipe"},
+        "kitchen": {"$ref": "#/$defs/recipe"},
+        "bathroom": {"$ref": "#/$defs/recipe"}
       }
     }
   },
@@ -97,7 +99,7 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {"enum": ["living", "dining", "bedroom", "other"]}
+          "items": {"enum": ["living", "dining", "bedroom", "kitchen", "bathroom", "other"]}
         },
         "sourceId": {"$ref": "#/$defs/id"},
         "sourceEntry": {"type": "string", "minLength": 1},

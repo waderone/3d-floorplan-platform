@@ -6,11 +6,11 @@ function manifest() {
   return {
     schemaVersion: '3.0',
     layoutId: 'a'.repeat(64),
-    pipelineVersion: 'multiroom-opening-clearance-layout-v4',
+    pipelineVersion: 'multiroom-opening-clearance-layout-v5',
     projectId: 'layout-demo',
     sceneRevision: 1,
     style: { id: 'warm-minimal', version: 2 },
-    assetCatalog: { id: 'starter-furniture', version: 3 },
+    assetCatalog: { id: 'starter-furniture', version: 4 },
     status: 'fallback',
     fallbackReason: 'no-room-fits',
     selectedRoomId: null,
@@ -47,6 +47,7 @@ function manifest() {
         levelId: 'level-main',
         roomIds: ['zone-living'],
         center: [2.5, 0],
+        tangent: [1, 0],
         width: 0.9,
         height: 2.1,
         sillHeight: 0,
@@ -59,7 +60,7 @@ function manifest() {
   }
 }
 
-test('parses layout v4 authoritative openings and clearance diagnostics', () => {
+test('parses layout v5 authoritative openings and clearance diagnostics', () => {
   const parsed = parseLayoutManifest(manifest())
 
   assert.equal(parsed.openings[0]?.id, 'door-main')

@@ -27,7 +27,7 @@ def test_canonical_style_pack_is_valid_and_catalogued() -> None:
     catalog = StyleCatalog(STYLE_PATH.parent)
 
     assert style.id == "warm-minimal"
-    assert style.version == 2
+    assert style.version == 3
     assert len(style.layout.placements) == 11
     assert catalog.get("warm-minimal") == style
     assert catalog.get("../warm-minimal") is None

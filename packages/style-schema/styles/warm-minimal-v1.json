@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.1",
   "id": "warm-minimal",
-  "version": 2,
+  "version": 3,
   "name": "暖木极简",
-  "description": "暖白墙面、浅木地板、低饱和布艺和柔和日光组成的首套程序化验证风格。",
+  "description": "暖白墙面、天然橡木、低饱和织物、定制柜体与柔和分区灯光组成的精装暖木方案。",
   "license": {
     "spdx": "LicenseRef-Project-Authored",
     "source": "project-authored"
   },
   "materials": {
     "architecture": { "baseColor": "#F3EADF", "metallic": 0, "roughness": 0.82 },
-    "floor": { "baseColor": "#A67858", "metallic": 0, "roughness": 0.68 },
+    "floor": { "baseColor": "#A97D5C", "metallic": 0, "roughness": 0.62 },
     "fabric": { "baseColor": "#C7B7A3", "metallic": 0, "roughness": 0.95 },
     "wood": { "baseColor": "#8F5B3D", "metallic": 0, "roughness": 0.55 },
     "accent": { "baseColor": "#7E8E78", "metallic": 0, "roughness": 0.78 },
@@ -21,9 +21,9 @@
   "environment": {
     "backgroundColor": "#E8E2D8",
     "ambientColor": "#FFF1DC",
-    "ambientIntensity": 1.15,
+    "ambientIntensity": 1.08,
     "sunColor": "#FFD7AA",
-    "sunIntensity": 2.4,
+    "sunIntensity": 2.15,
     "sunDirection": [-0.45, -1, 0.35]
   },
   "camera": {

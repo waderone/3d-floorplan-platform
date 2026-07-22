@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 3,
+  "version": 4,
   "mobileBudgetBytes": 5242880,
   "sources": [
     {
@@ -77,6 +77,21 @@
         "spdx": "CC0-1.0",
         "url": "https://polyhaven.com/license",
         "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "project-interior-fixtures-v1",
+      "name": "Project Warm Minimal Interior Fixtures",
+      "siteVersion": "2026-07-22",
+      "embeddedVersion": "interior-fixtures-v1",
+      "author": "3D Floorplan Platform contributors",
+      "sourceUrl": "https://github.com/waderone/3d-floorplan-platform/blob/main/tools/assets/generate_interior_fixtures.py",
+      "downloadUrl": "https://raw.githubusercontent.com/waderone/3d-floorplan-platform/main/tools/assets/generate_interior_fixtures.py",
+      "sha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "localNotice": "LICENSE-PROJECT-ASSETS.txt"
       }
     }
   ],
@@ -245,14 +260,63 @@
       "roomTypes": ["bedroom"],
       "canonicalSize": [0.45, 0.6, 0.45],
       "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "project-warm-minimal-kitchen",
+      "kind": "model",
+      "roomTypes": ["kitchen"],
+      "sourceId": "project-interior-fixtures-v1",
+      "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset kitchen",
+      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "canonicalSize": [1.9, 2.06, 0.6795],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/project-warm-minimal-kitchen.glb",
+        "sha256": "96d3a14792dda082e30e5735c6336ad48368c3af19f06480060612719191475f",
+        "bytes": 55920
+      },
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "project-warm-minimal-bathroom",
+      "kind": "model",
+      "roomTypes": ["bathroom"],
+      "sourceId": "project-interior-fixtures-v1",
+      "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset bathroom",
+      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "canonicalSize": [1.5675, 1.845, 0.8875],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/project-warm-minimal-bathroom.glb",
+        "sha256": "45b4c99de42196139c9526924bacc7dd77b480c336df6c45d80a37e69e9fd5ca",
+        "bytes": 43140
+      },
+      "fallback": {"kind": "box", "materialRole": "ceramic"}
+    },
+    {
+      "id": "project-sculptural-planter",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "project-interior-fixtures-v1",
+      "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset planter",
+      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "canonicalSize": [0.969366, 1.535245, 0.6],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/project-sculptural-planter.glb",
+        "sha256": "db733228082f7e342dc132c513dca4aaa0632b770ba93fe8ae7a727d837de732",
+        "bytes": 102168
+      },
+      "fallback": {"kind": "cylinder", "materialRole": "greenery"}
     }
   ],
   "roomRecipes": {
     "living": [
-      {"id": "living-chair-east", "itemId": "living-chair-east", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [0.68, 0.511426, 1.35], "rotationYDegrees": -10},
-      {"id": "living-chair-west", "itemId": "living-chair-west", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [-0.68, 0.511426, 1.35], "rotationYDegrees": 10},
+      {"id": "living-sofa", "itemId": "living-sofa", "assetId": "polyhaven-sofa-01", "role": "fabric", "collisionMode": "solid", "position": [0.15, 0.45, 1.35], "size": [2.2, 0.9, 0.92], "rotationYDegrees": 0},
+      {"id": "living-chair-west", "itemId": "living-chair-west", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [-1.5, 0.511426, 0.1], "rotationYDegrees": 68},
       {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "kenney-coffee-table", "role": "wood", "collisionMode": "solid", "position": [0, 0.23, -0.1], "rotationYDegrees": 0},
       {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "project-sideboard", "role": "wood", "collisionMode": "solid", "position": [0, 0.42, -1.55], "rotationYDegrees": 0},
+      {"id": "living-planter", "itemId": "living-planter", "assetId": "project-sculptural-planter", "role": "greenery", "collisionMode": "solid", "position": [1.52, 0.64, -1.45], "size": [0.7, 1.28, 0.5], "rotationYDegrees": 0},
       {"id": "living-rug", "itemId": "living-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.25], "rotationYDegrees": 0},
       {"id": "living-pendant", "itemId": "living-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.25], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
     ],
@@ -269,6 +333,12 @@
       {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.4, 0.3, 0.2], "rotationYDegrees": 0},
       {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0},
       {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.3], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
+    ],
+    "kitchen": [
+      {"id": "kitchen-suite", "itemId": "kitchen-suite", "assetId": "project-warm-minimal-kitchen", "role": "wood", "collisionMode": "solid", "position": [0, 1.0, 0], "size": [1.72, 2.0, 0.62], "rotationYDegrees": 90}
+    ],
+    "bathroom": [
+      {"id": "bathroom-suite", "itemId": "bathroom-suite", "assetId": "project-warm-minimal-bathroom", "role": "ceramic", "collisionMode": "solid", "position": [0, 0.86, 0], "size": [1.36, 1.72, 0.76], "rotationYDegrees": 0}
     ]
   }
 }

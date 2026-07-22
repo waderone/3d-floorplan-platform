@@ -63,12 +63,12 @@ def reviewed_sample() -> EvaluationSample:
                     {
                         "id": "bathroom-room",
                         "roomType": "bathroom",
-                        "polygon": [[9, 0], [10.5, 0], [10.5, 2], [9, 2]],
+                        "polygon": [[9, 0], [11.5, 0], [11.5, 2], [9, 2]],
                     },
                     {
                         "id": "compact-bedroom",
                         "roomType": "bedroom",
-                        "polygon": [[11, 0], [14, 0], [14, 3], [11, 3]],
+                        "polygon": [[12, 0], [15, 0], [15, 3], [12, 3]],
                     },
                 ],
                 "openings": [
@@ -107,8 +107,9 @@ def test_reviewed_scene_preserves_room_semantics_and_review_provenance() -> None
     rooms = extract_rooms(scene["nodes"])
     by_name = {room.name: room for room in rooms}
     assert by_name["客厅"].room_type == "living"
-    assert by_name["厨房"].room_type == "other"
-    assert by_name["卫生间"].area == 3
+    assert by_name["厨房"].room_type == "kitchen"
+    assert by_name["卫生间"].room_type == "bathroom"
+    assert by_name["卫生间"].area == 5
     kitchen_node = next(
         node for node in scene["nodes"].values() if node.get("name") == "厨房"
     )
@@ -169,3 +170,14 @@ def test_reviewed_compact_bedroom_uses_core_furnishing_variant() -> None:
 
     assert bedroom.id in layout.furnished_room_ids
     assert item_ids == {"bedroom-bed", "bedroom-rug", "bedroom-pendant"}
+    for name, asset_id in (
+        ("厨房", "project-warm-minimal-kitchen"),
+        ("卫生间", "project-warm-minimal-bathroom"),
+    ):
+        room = next(candidate for candidate in layout.rooms if candidate.name == name)
+        assert room.id in layout.furnished_room_ids
+        assert {
+            placement.asset_id
+            for placement in layout.placements
+            if placement.room_id == room.id
+        } == {asset_id}
