@@ -66,6 +66,7 @@
 - [商业级实时资产质量切片](docs/adr/0018-commercial-realtime-assets.md)
 - [权威门窗开口与动线净空布局](docs/adr/0019-authoritative-openings-and-circulation.md)
 - [户型图到客户实时 3D 的主线基准](docs/adr/0020-floorplan-to-realtime-baseline.md)
+- [真实户型主链路可靠性报告](docs/adr/0021-mainline-reliability-evaluation.md)
 
 ## 仓库结构
 
@@ -83,3 +84,7 @@ outputs/              立项与交付文档
 下一阶段继续以“户型图上传→自动 3D→客户实时看→切换风格”为唯一产品主线，优先用合法真实
 样本量化端到端成功率并补齐门窗、斜墙、房间语义和失败复核入口；家具拖拽、约束反馈与版本恢复
 作为后续增强，不再先于主链路可靠性建设。
+
+离线可靠性报告已经可以对同一份商业评测 manifest 逐样本运行真实识别、结构场景、GLB 优化和
+全部风格布局，并把失败归到明确阶段。当前只有项目自有受控 fixture 完成主线验证，不将其 1/1
+结果宣传为真实户型成功率；正式百分比等待 20～50 个 complete 样本晋级后生成。

@@ -218,6 +218,25 @@ python -m app.recognition_evaluation ../../datasets/recognition/manifest.json \
 房间语义准确率和同一 pipeline 的人工修正中位时间。`pending` 标注会明确跳过；图片损坏进入
 `invalid`，识别异常进入 `recognition_failed` 并以零预测计入召回率，不会从分母中静默消失。
 
+### 主链路可靠性离线评测
+
+识别几何指标不能单独回答客户是否最终拿到可浏览方案。使用同一份评测 manifest 继续运行：
+
+```bash
+FLOORPLAN_NODE_BIN=/absolute/path/to/node \
+python -m app.baseline_evaluation ../../datasets/recognition/manifest.json \
+  --output ../../datasets/recognition/reports/mainline-reliability.json
+```
+
+工具在临时目录依次调用真实 OpenCV、baseline Scene/GLB、ArtifactStore/glTF-Transform v4，以及
+目录内全部装修风格的 layout。样本状态只会是 `pending`、`invalid`、`recognition_failed`、
+`scene_failed`、`artifact_failed`、`layout_failed` 或 `publishable`。publishable 要求每套风格
+至少有一个已布置房间；partial 会保留在 layout 明细和 aggregate 中。
+
+`publishableRate` 以所有 `annotationStatus: complete` 样本为分母，图片损坏等 invalid 样本不会
+被排除。报告身份包含数据集摘要、识别/baseline/artifact/layout 管线版本、全部风格版本和资产
+目录版本。没有正式 complete 样本时不得用示例或 pending 样本宣称真实成功率。
+
 ### 户型真值提交校验
 
 `apps/annotator` 生成的草稿或待复核 JSON 应在交接前同时提供原工作包，并用后端权威契约复核：

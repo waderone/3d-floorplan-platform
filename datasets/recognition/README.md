@@ -192,3 +192,19 @@ python -m app.recognition_evaluation ../../datasets/recognition/manifest.json \
 完整 manifest 内容、识别管线和阈值相同时会生成相同 `reportId`；修改标注或修正记录也会改变
 身份。图片缺失或 SHA-256 不一致进入 `invalid`；识别器失败进入 `recognition_failed`，并按
 零预测计入召回率，二者都不会被静默排除。
+
+## 运行主链路可靠性报告
+
+几何评测完成后，可用同一个 manifest 验证样本能否继续生成客户可看的三风格 3D：
+
+```bash
+cd services/api
+FLOORPLAN_NODE_BIN=/absolute/path/to/node \
+python -m app.baseline_evaluation ../../datasets/recognition/manifest.json \
+  --output ../../datasets/recognition/reports/mainline-reliability.json
+```
+
+该报告逐样本执行识别、权威场景转换、结构 GLB、真实优化器和全部风格布局，并区分数据完整性、
+识别、场景、产物和布局失败。`publishableRate` 的分母是全部 complete 样本；pending 不参与，
+invalid 会计入失败。正式 manifest 尚未建立时，只能用项目自有 fixture 验证工具，不能把示例
+manifest 或单张受控图的结果当作真实户型成功率。
