@@ -35,7 +35,7 @@ export interface LayoutOpening {
 export interface LayoutManifest {
   schemaVersion: '3.0'
   layoutId: string
-  pipelineVersion: 'multiroom-opening-clearance-layout-v3'
+  pipelineVersion: 'multiroom-opening-clearance-layout-v4'
   projectId: string
   sceneRevision: number
   style: { id: string; version: number }
@@ -80,7 +80,7 @@ export function parseLayoutManifest(value: unknown): LayoutManifest {
     value.schemaVersion !== '3.0' ||
     typeof value.layoutId !== 'string' ||
     !/^[0-9a-f]{64}$/.test(value.layoutId) ||
-    value.pipelineVersion !== 'multiroom-opening-clearance-layout-v3' ||
+    value.pipelineVersion !== 'multiroom-opening-clearance-layout-v4' ||
     typeof value.projectId !== 'string' ||
     !Number.isInteger(value.sceneRevision) ||
     !isRecord(value.style) ||

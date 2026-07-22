@@ -63,12 +63,15 @@ export function buildRoomViewOptions(
 ): RoomViewOption[] {
   const furnished = new Set(furnishedRoomIds)
   return roomTypeOrder.flatMap((roomType) => {
-    const room = rooms
+    const typedRooms = rooms
       .filter((candidate) => candidate.roomType === roomType && furnished.has(candidate.id))
-      .sort((first, second) => second.area - first.area || first.id.localeCompare(second.id))[0]
-    return room
-      ? [{ id: `room:${room.id}`, label: room.name || roomTypeLabels[roomType], roomId: room.id, roomType }]
-      : []
+      .sort((first, second) => second.area - first.area || first.id.localeCompare(second.id))
+    return typedRooms.map((room) => ({
+      id: `room:${room.id}`,
+      label: room.name || roomTypeLabels[roomType],
+      roomId: room.id,
+      roomType,
+    }))
   })
 }
 
@@ -79,7 +82,7 @@ export function roomCameraPreset(room: ShowroomRoom): RoomCameraPreset {
   const depth = Math.max(...zValues) - Math.min(...zValues)
   return {
     target: [room.centroid[0], 1.05, room.centroid[1]],
-    radius: Math.max(3.2, Math.hypot(width, depth) * 0.72),
+    radius: Math.max(4, Math.hypot(width, depth) * 0.9),
   }
 }
 

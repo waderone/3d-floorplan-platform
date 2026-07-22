@@ -46,7 +46,7 @@ root.innerHTML = `
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">◇</span>
-        <div><strong>空间预览</strong><span>3D FLOORPLAN</span></div>
+        <div><strong>空间预览</strong><span>3D 户型</span></div>
       </div>
       <div class="tool-actions">
         <button class="icon-button" id="clearances" type="button" aria-label="显示门窗动线净空" aria-pressed="false">⌗</button>
@@ -54,7 +54,7 @@ root.innerHTML = `
       </div>
     </header>
     <aside class="model-card" aria-label="模型信息">
-      <span class="eyebrow">INTERACTIVE HOME</span>
+      <span class="eyebrow">沉浸式家居</span>
       <h1 id="project-name">全屋设计方案</h1>
       <div class="model-meta">
         <span id="style-name">风格加载中</span><span id="layout-status">空间加载中</span><span id="quality-status">实时画质</span>
@@ -62,13 +62,13 @@ root.innerHTML = `
       <div class="model-stats" id="stats"></div>
     </aside>
     <aside class="style-panel" aria-label="装修风格">
-      <span class="eyebrow">DESIGN STYLES</span>
+      <span class="eyebrow">装修风格</span>
       <div class="style-heading"><strong>选择装修风格</strong><span id="style-switch-status" role="status" aria-live="polite"></span></div>
       <div class="style-options" id="style-options"></div>
       <p id="style-description">正在读取可用方案…</p>
     </aside>
     <section class="intake-panel" id="intake-panel" aria-labelledby="intake-title" hidden>
-      <span class="eyebrow">FLOORPLAN TO 3D</span>
+      <span class="eyebrow">户型图生成 3D</span>
       <h1 id="intake-title">上传户型图，生成可浏览的 3D 方案</h1>
       <p>当前基准适合边界清晰的直墙户型图。填写图纸外边界实际宽度，系统会自动识别、建模并生成三套可切换风格。</p>
       <form id="baseline-form">
@@ -573,8 +573,9 @@ async function applyStyle(
   const bounds = modelBounds(model.meshes)
   const extent = bounds.maximum.subtract(bounds.minimum)
   const center = bounds.minimum.add(extent.scale(0.5))
-  const floorWidth = Math.max(6, extent.x + style.layout.floorPadding * 2)
-  const floorDepth = Math.max(6, extent.z + style.layout.floorPadding * 2)
+  const floorEdge = Math.min(0.12, style.layout.floorPadding)
+  const floorWidth = Math.max(6, extent.x + floorEdge * 2)
+  const floorDepth = Math.max(6, extent.z + floorEdge * 2)
   const floorHeight = 0.12
   const floor = MeshBuilder.CreateBox(
     'style-floor',

@@ -135,7 +135,7 @@ def test_layout_is_deterministic_and_furnishes_three_room_types() -> None:
     assert first.referenced_asset_bytes == 3_269_376
     assert first.mobile_asset_budget_exceeded is False
     assert first.schema_version == "3.0"
-    assert first.pipeline_version == "multiroom-opening-clearance-layout-v3"
+    assert first.pipeline_version == "multiroom-opening-clearance-layout-v4"
     assert first.opening_clearance_validated is True
     assert first.openings == []
     assert len(first.layout_id) == 64

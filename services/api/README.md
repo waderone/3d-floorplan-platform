@@ -15,6 +15,7 @@
 - 户型标注工作包与真值提交文件的离线身份、几何和交接状态校验；
 - 真实评测样本的批量生产看板、状态审计和已筛选工作包准备；
 - 已晋级样本的版本化 manifest 发布与几何/主链路联合评测；
+- 已双人复核真值到权威 Scene、结构 GLB 与三风格实时样板间的确定性发布；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -88,6 +89,25 @@ ready manifest 包含识别置信度、自动接受的建议数量、房型映�
 三套 layout 状态和 `viewerUrl`。同一项目标识不可覆盖，重复创建返回 HTTP 409。当前 baseline
 只自动接受可读的直墙/闭合房间建议；门窗、曲墙和可靠房间语义仍属于明确限制，不能替代人工
 复核工作流。生产环境需要把同进程任务迁移到队列，但保持相同 manifest 契约。
+
+### 双人复核真值发布为实时 3D
+
+已晋级 manifest 中的 `complete` 样本可以跳过自动识别，直接使用双人复核后的墙、房间、门洞
+和房型发布客户样板间。该入口会核验图片 SHA-256 与 annotation provenance，幂等写入 Scene、
+结构 GLB、语义安全优化产物，并对目录内三种风格逐一生成 layout：
+
+```bash
+cd services/api
+python -m app.reviewed_showrooms ../../datasets/recognition/manifest.json \
+  --sample-id commons-190205778 \
+  --project-id truth-commons-190205778 \
+  --data-dir data \
+  --node-binary /absolute/path/to/node
+```
+
+成功报告给出 `viewerUrl`、15/7/7 真值计数、artifact 身份以及每种风格的已布置房间、陈设与
+门洞数量。已存在但内容不同的项目会明确拒绝覆盖；厨房、卫生间等当前目录尚无审计家具配方的
+空间会保留真实结构与原始房型 metadata，并诚实列为未布置。
 
 ### 场景读写
 
@@ -168,15 +188,17 @@ denoise、HDRI 与 PBR 木地板，输出鸟瞰/客厅/卧室三视角。未知�
 
 接口返回 HTTP 202 和 processing manifest；后台完成后 latest 变为 ready 或 failed。
 ready 保留兼容字段 `output`，同时记录 `profile`、`device`、总耗时、`views[]`，以及同一
-layout v3 的 opening/ignored/blocked 数量和净空验证状态。
+layout v4 的 opening/ignored/blocked 数量和净空验证状态。
 每个视角都有独立 PNG URL、SHA-256、字节数、尺寸与渲染耗时；`output` 恒等于
 第一个鸟瞰视角，旧客户仍可继续访问 `/renders/.../image.png`。
 
 layout 接口优先读取 Zone polygon，缺少 Zone 时读取 Slab polygon。房型优先使用显式
 `roomType`，缺失时按受控中英文名称分类。返回 `ready`、`partial` 或 `fallback`，包含全部
 候选房间、已布置/未布置房间、带 `roomId`/`assetId` 的绝对坐标、目录版本以及唯一真实
-模型的移动端字节预算。layout v3 还从直线 Wall 的权威 Door/Window 生成世界坐标净空多边形，
+模型的移动端字节预算。layout v4 还从直线 Wall 的权威 Door/Window 生成世界坐标净空多边形，
 用 0.25 m 有界候选搜索避让；曲墙/孤儿开口列入 ignored，全部候选被开口阻断的房间显式列出。
+完整卧室配方放不下时，v4 只降级到经过审计的床、地毯和吊灯核心组合，仍执行相同的房间边界、
+墙净空和门洞净空验证。
 真实 GLB 通过 `/catalog-assets/models/...` 访问；Viewer 或 Blender 加载失败时按目录声明创建
 程序化回退并记录数量。
 

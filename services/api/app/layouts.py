@@ -12,7 +12,7 @@ from .assets import AssetCatalog, RoomType
 from .styles import StylePack, StylePlacement
 
 
-LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v3"
+LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v4"
 Point2D = tuple[float, float]
 
 
@@ -75,7 +75,7 @@ class LayoutManifest(BaseModel):
 
     schema_version: Literal["3.0"] = Field(alias="schemaVersion")
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
-    pipeline_version: Literal["multiroom-opening-clearance-layout-v3"] = Field(
+    pipeline_version: Literal["multiroom-opening-clearance-layout-v4"] = Field(
         alias="pipelineVersion"
     )
     project_id: str = Field(alias="projectId")
@@ -148,7 +148,7 @@ def _polygon_centroid(polygon: list[Point2D]) -> Point2D:
     )
 
 
-def _parse_polygon(value: Any) -> list[Point2D] | None:
+def _parse_polygon(value: Any, minimum_area: float = 4) -> list[Point2D] | None:
     if not isinstance(value, list) or len(value) < 3:
         return None
     polygon: list[Point2D] = []
@@ -163,7 +163,7 @@ def _parse_polygon(value: Any) -> list[Point2D] | None:
         if not all(math.isfinite(entry) for entry in parsed):
             return None
         polygon.append(parsed)
-    if len(set(polygon)) < 3 or _polygon_area(polygon) < 4:
+    if len(set(polygon)) < 3 or _polygon_area(polygon) < minimum_area:
         return None
     return polygon
 
@@ -190,7 +190,15 @@ def extract_rooms(nodes: dict[str, dict[str, Any]]) -> list[LayoutRoom]:
         for node_id, node in sorted(nodes.items()):
             if node.get("type") != source:
                 continue
-            polygon = _parse_polygon(node.get("polygon"))
+            metadata = node.get("metadata")
+            is_reviewed_truth = (
+                isinstance(metadata, dict)
+                and isinstance(metadata.get("reviewedGroundTruth"), dict)
+            )
+            polygon = _parse_polygon(
+                node.get("polygon"),
+                minimum_area=1 if is_reviewed_truth else 4,
+            )
             if polygon is None:
                 continue
             name = node.get("name") if isinstance(node.get("name"), str) else node_id
@@ -277,6 +285,19 @@ def extract_openings(
         wall_start = _finite_vector(wall.get("start"), 2) if isinstance(wall, dict) else None
         wall_end = _finite_vector(wall.get("end"), 2) if isinstance(wall, dict) else None
         position = _finite_vector(node.get("position", [0, 0, 0]), 3)
+        plan_center = _finite_vector(node.get("planCenter"), 2)
+        plan_tangent = _finite_vector(node.get("planTangent"), 2)
+        metadata = node.get("metadata")
+        has_reviewed_ground_truth = (
+            isinstance(metadata, dict)
+            and isinstance(metadata.get("reviewedGroundTruth"), dict)
+            and metadata.get("worldPlanCenterSource") == "reviewed-ground-truth"
+        )
+        has_plan_override = (
+            has_reviewed_ground_truth
+            and plan_center is not None
+            and plan_tangent is not None
+        )
         if (
             wall_id is None
             or not isinstance(wall, dict)
@@ -294,12 +315,16 @@ def extract_openings(
         width_default, height_default = ((0.9, 2.1) if source_type == "door" else (1.5, 1.5))
         width_value = node.get("width", width_default)
         height_value = node.get("height", height_default)
+        plan_tangent_length = (
+            math.hypot(plan_tangent[0], plan_tangent[1]) if plan_tangent is not None else 0.0
+        )
         if (
             wall_length < 1e-9
             or isinstance(width_value, bool)
             or not isinstance(width_value, (int, float))
             or isinstance(height_value, bool)
             or not isinstance(height_value, (int, float))
+            or (has_plan_override and plan_tangent_length < 1e-9)
         ):
             ignored.append(node_id)
             continue
@@ -310,17 +335,24 @@ def extract_openings(
             or not math.isfinite(height)
             or width <= 0
             or height <= 0
-            or position[0] < 0
-            or position[0] > wall_length
+            or (not has_plan_override and (position[0] < 0 or position[0] > wall_length))
         ):
             ignored.append(node_id)
             continue
-        tangent = (wall_dx / wall_length, wall_dz / wall_length)
-        normal = (-tangent[1], tangent[0])
-        center = (
-            wall_start[0] + tangent[0] * position[0] + normal[0] * position[2],
-            wall_start[1] + tangent[1] * position[0] + normal[1] * position[2],
-        )
+        if has_plan_override:
+            assert plan_center is not None and plan_tangent is not None
+            tangent = (
+                plan_tangent[0] / plan_tangent_length,
+                plan_tangent[1] / plan_tangent_length,
+            )
+            center = (plan_center[0], plan_center[1])
+        else:
+            tangent = (wall_dx / wall_length, wall_dz / wall_length)
+            normal = (-tangent[1], tangent[0])
+            center = (
+                wall_start[0] + tangent[0] * position[0] + normal[0] * position[2],
+                wall_start[1] + tangent[1] * position[0] + normal[1] * position[2],
+            )
         if source_type == "door":
             opening_kind = node.get("openingKind", "door")
             opening_kind = opening_kind if opening_kind in {"door", "opening"} else "door"
@@ -640,6 +672,34 @@ def _identity_payload(manifest: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _template_variants(
+    room: LayoutRoom,
+    template: list[StylePlacement],
+) -> list[list[StylePlacement]]:
+    variants = [template]
+    if room.room_type != "bedroom":
+        return variants
+    compact: list[StylePlacement] = []
+    for placement in template:
+        if placement.collision_mode == "solid" and placement.asset_id not in {
+            "kenney-bed-double",
+            "project-modern-upholstered-bed",
+        }:
+            continue
+        if placement.asset_id == "project-rug":
+            compact.append(placement.model_copy(update={"size": (2.0, 0.05, 1.8)}))
+        elif placement.asset_id in {
+            "kenney-bed-double",
+            "project-modern-upholstered-bed",
+        }:
+            compact.append(placement.model_copy(update={"size": (1.55, 1.1, 1.9)}))
+        else:
+            compact.append(placement)
+    if compact and compact != template:
+        variants.append(compact)
+    return variants
+
+
 def generate_layout(
     project_id: str,
     scene_revision: int,
@@ -709,52 +769,60 @@ def generate_layout(
         missing_roles = sorted({entry.role for entry in template if entry.role not in style.materials})
         if missing_roles:
             raise ValueError(f"style {style.id} lacks catalog material roles: {missing_roles}")
-        bounds = _item_bounds(template)
-        if not _items_have_clearance(bounds, style.layout.item_clearance):
-            raise ValueError(f"{room.room_type} asset recipe violates item clearance")
-        all_points = [
-            point
-            for placement in template
-            if placement.collision_mode == "solid"
-            for point in _rotated_corners(placement)
-        ]
-        template_center = (
-            (min(point[0] for point in all_points) + max(point[0] for point in all_points)) / 2,
-            (min(point[1] for point in all_points) + max(point[1] for point in all_points)) / 2,
-        )
-        candidate_translations = _candidate_translations(
-            room,
-            bounds,
-            template_center,
-            style.layout.wall_clearance,
-        )
         room_openings = [opening for opening in openings if room.id in opening.room_ids]
-        room_fit_candidates = [
-            candidate
-            for candidate in candidate_translations
-            if all(
-                _bounds_fit_room(item_bounds, candidate, room, style.layout.wall_clearance)
-                for item_bounds in bounds.values()
+        translation: Point2D | None = None
+        selected_template: list[StylePlacement] | None = None
+        had_room_fit_candidate = False
+        for variant in _template_variants(room, template):
+            bounds = _item_bounds(variant)
+            if not bounds or not _items_have_clearance(bounds, style.layout.item_clearance):
+                raise ValueError(f"{room.room_type} asset recipe violates item clearance")
+            all_points = [
+                point
+                for placement in variant
+                if placement.collision_mode == "solid"
+                for point in _rotated_corners(placement)
+            ]
+            template_center = (
+                (min(point[0] for point in all_points) + max(point[0] for point in all_points)) / 2,
+                (min(point[1] for point in all_points) + max(point[1] for point in all_points)) / 2,
             )
-        ]
-        translation = next(
-            (
+            candidate_translations = _candidate_translations(
+                room,
+                bounds,
+                template_center,
+                style.layout.wall_clearance,
+            )
+            room_fit_candidates = [
                 candidate
-                for candidate in room_fit_candidates
-                if not any(
-                    _bounds_overlap_polygon(
-                        item_bounds,
-                        candidate,
-                        opening.clearance_polygon,
-                    )
+                for candidate in candidate_translations
+                if all(
+                    _bounds_fit_room(item_bounds, candidate, room, style.layout.wall_clearance)
                     for item_bounds in bounds.values()
-                    for opening in room_openings
                 )
-            ),
-            None,
-        )
-        if translation is None:
-            if room_fit_candidates and room_openings:
+            ]
+            had_room_fit_candidate = had_room_fit_candidate or bool(room_fit_candidates)
+            translation = next(
+                (
+                    candidate
+                    for candidate in room_fit_candidates
+                    if not any(
+                        _bounds_overlap_polygon(
+                            item_bounds,
+                            candidate,
+                            opening.clearance_polygon,
+                        )
+                        for item_bounds in bounds.values()
+                        for opening in room_openings
+                    )
+                ),
+                None,
+            )
+            if translation is not None:
+                selected_template = variant
+                break
+        if translation is None or selected_template is None:
+            if had_room_fit_candidate and room_openings:
                 opening_blocked_room_ids.append(room.id)
             unfurnished_room_ids.append(room.id)
             continue
@@ -775,7 +843,7 @@ def generate_layout(
                 size=placement.size,
                 rotationYDegrees=placement.rotation_y_degrees,
             )
-            for placement in template
+            for placement in selected_template
         )
         furnished_room_ids.append(room.id)
 

@@ -59,18 +59,21 @@ test('parses a unique non-empty style catalog', () => {
   )
 })
 
-test('builds one view per furnished customer room type', () => {
+test('builds one view for every furnished customer room', () => {
   assert.deepEqual(
     buildRoomViewOptions(rooms, ['living-small', 'living-large', 'bedroom']),
     [
       { id: 'room:living-large', label: '客餐厅', roomId: 'living-large', roomType: 'living' },
+      { id: 'room:living-small', label: '起居室', roomId: 'living-small', roomType: 'living' },
       { id: 'room:bedroom', label: '主卧', roomId: 'bedroom', roomType: 'bedroom' },
     ],
   )
 })
 
 test('frames a room and preserves the project parameter in share URLs', () => {
-  assert.deepEqual(roomCameraPreset(rooms[2]), { target: [8, 1.05, 2], radius: 4.0729350596345135 })
+  const preset = roomCameraPreset(rooms[2])
+  assert.deepEqual(preset.target, [8, 1.05, 2])
+  assert.ok(Math.abs(preset.radius - 5.091168824543143) < 1e-12)
   assert.equal(
     searchWithStyle('?project=customer-home&style=warm-minimal', 'modern-contrast'),
     '?project=customer-home&style=modern-contrast',

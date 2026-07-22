@@ -28,6 +28,9 @@ layout v2 只使用 Zone/Slab 房间多边形、墙边距和家具互碰规则�
    和 GLB 分别固定 SHA-256，5 个 PBR 材质使用 `preserve`，资产明确按 CC0 发布。旧哥特 GLB
    和导入项移除。
 
+后续 `multiroom-opening-clearance-layout-v4` 保持 schema `3.0` 和以上开口契约不变，仅新增
+紧凑卧室核心陈设回退，并对带双人复核 provenance 的小面积真实 Zone 放宽自动候选噪声阈值。
+
 ## 验收结果
 
 - FastAPI 97 项、Viewer 8 项、严格 TypeScript/Vite 构建通过。

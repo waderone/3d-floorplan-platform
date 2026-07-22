@@ -6,7 +6,7 @@ function manifest() {
   return {
     schemaVersion: '3.0',
     layoutId: 'a'.repeat(64),
-    pipelineVersion: 'multiroom-opening-clearance-layout-v3',
+    pipelineVersion: 'multiroom-opening-clearance-layout-v4',
     projectId: 'layout-demo',
     sceneRevision: 1,
     style: { id: 'warm-minimal', version: 2 },
@@ -59,7 +59,7 @@ function manifest() {
   }
 }
 
-test('parses layout v3 authoritative openings and clearance diagnostics', () => {
+test('parses layout v4 authoritative openings and clearance diagnostics', () => {
   const parsed = parseLayoutManifest(manifest())
 
   assert.equal(parsed.openings[0]?.id, 'door-main')
