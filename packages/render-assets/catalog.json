@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "id": "interior-rendering",
-  "version": 1,
+  "version": 2,
   "license": {
     "spdx": "CC0-1.0",
     "url": "https://polyhaven.com/license",
@@ -55,6 +55,42 @@
         "sha256": "061f1e1293251b2d28c76e3fac1ea9452b0e8648bb8f9b3728e09db386166e5c",
         "bytes": 527754
       }
+    },
+    {
+      "id": "natural-rug-diffuse",
+      "kind": "color",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_diff_1k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_diff_512.jpg",
+        "sha256": "ef1a2d2ace17aaa3bc29dd06f638b3df4ce0f4530bb32e3691c0c34a669fc514",
+        "bytes": 78761
+      }
+    },
+    {
+      "id": "natural-rug-normal",
+      "kind": "normal",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_nor_gl_1k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_nor_gl_512.jpg",
+        "sha256": "a35469b221f35e3dabf418c7176a775d2656d9b16358d568fee6214585c0dfb2",
+        "bytes": 65080
+      }
+    },
+    {
+      "id": "natural-rug-roughness",
+      "kind": "roughness",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_rough_1k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_rough_512.jpg",
+        "sha256": "b954cd04a85d1137aea9f11cad726b7f8baaf7cde1eaf6c7c3976109c08a55d0",
+        "bytes": 122721
+      }
     }
   ],
   "materialSets": {
@@ -64,6 +100,13 @@
       "roughness": "wood-floor-roughness",
       "tileSizeMeters": 1.7,
       "normalStrength": 0.42
+    },
+    "natural-rug": {
+      "diffuse": "natural-rug-diffuse",
+      "normal": "natural-rug-normal",
+      "roughness": "natural-rug-roughness",
+      "tileSizeMeters": 0.3,
+      "normalStrength": 0.55
     }
   },
   "profiles": {

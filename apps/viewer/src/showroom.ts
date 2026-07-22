@@ -87,8 +87,8 @@ export function roomCameraPreset(room: ShowroomRoom): RoomCameraPreset {
   const width = Math.max(...xValues) - Math.min(...xValues)
   const depth = Math.max(...zValues) - Math.min(...zValues)
   return {
-    target: [room.centroid[0], 1.05, room.centroid[1]],
-    radius: Math.max(4, Math.hypot(width, depth) * 0.9),
+    target: [room.centroid[0], 0.95, room.centroid[1]],
+    radius: Math.max(3.2, Math.hypot(width, depth) * 0.67),
   }
 }
 

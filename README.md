@@ -74,6 +74,7 @@ Viewer。该样板达到 6/7 房间已布置，唯一未布置空间为停车区
 - [真实户型主链路可靠性报告](docs/adr/0021-mainline-reliability-evaluation.md)
 - [真实样本批次发布与联合评测](docs/adr/0022-recognition-batch-release.md)
 - [暖木极简精装实时样板](docs/adr/0023-warm-minimal-refined-showroom.md)
+- [真实感客厅质量标杆](docs/adr/0024-photoreal-living-room-slice.md)
 
 ## 仓库结构
 

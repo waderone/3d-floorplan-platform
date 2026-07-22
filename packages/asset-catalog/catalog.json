@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 4,
+  "version": 5,
   "mobileBudgetBytes": 5242880,
   "sources": [
     {
@@ -20,21 +20,6 @@
       }
     },
     {
-      "id": "polyhaven-modern-arm-chair-01-1k",
-      "name": "Modern Arm Chair 01",
-      "siteVersion": "2022-10-31",
-      "embeddedVersion": "1k-gltf",
-      "author": "Vibrant Nordic",
-      "sourceUrl": "https://polyhaven.com/a/modern_arm_chair_01",
-      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_arm_chair_01/modern_arm_chair_01_1k.gltf",
-      "sha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a",
-      "license": {
-        "spdx": "CC0-1.0",
-        "url": "https://polyhaven.com/license",
-        "localNotice": "LICENSE-POLY-HAVEN.txt"
-      }
-    },
-    {
       "id": "polyhaven-sofa-01-1k",
       "name": "Sofa 01",
       "siteVersion": "2020-03-31",
@@ -43,6 +28,81 @@
       "sourceUrl": "https://polyhaven.com/a/Sofa_01",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/Sofa_01/Sofa_01_1k.gltf",
       "sha256": "dc9d331a24fc8994606ae5a283826cb28feb3166782f59d006d0f10cc92cc830",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-modern-coffee-table-01-1k",
+      "name": "Modern Coffee Table 01",
+      "siteVersion": "2021-12-29",
+      "embeddedVersion": "1k-gltf-512-textures",
+      "author": "Amin",
+      "sourceUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_coffee_table_01/modern_coffee_table_01_1k.gltf",
+      "sha256": "a35d811da4c174d0c888f23353dda21501763dbf5505c66f57fef4b3f613e50c",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-modern-wooden-cabinet-1k",
+      "name": "Modern Wooden Cabinet",
+      "siteVersion": "2023-08-02",
+      "embeddedVersion": "1k-gltf-512-textures",
+      "author": "Patrik Pangerl",
+      "sourceUrl": "https://polyhaven.com/a/modern_wooden_cabinet",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_wooden_cabinet/modern_wooden_cabinet_1k.gltf",
+      "sha256": "9c0765063297018e854d11bc27da3cbab3c33904a3be2f5c15f46635df7e857f",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-potted-plant-04-1k",
+      "name": "Potted Plant 04",
+      "siteVersion": "2021-06-15",
+      "embeddedVersion": "1k-gltf-512-textures",
+      "author": "Rico Cilliers",
+      "sourceUrl": "https://polyhaven.com/a/potted_plant_04",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/potted_plant_04/potted_plant_04_1k.gltf",
+      "sha256": "b3a3bc3e97da75844999c4da07b7104b6c023f729a7c045979929b9504184339",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-hanging-picture-frame-01-1k",
+      "name": "Hanging Picture Frame 01",
+      "siteVersion": "2021-06-15",
+      "embeddedVersion": "1k-gltf-512-textures",
+      "author": "James Ray Cock",
+      "sourceUrl": "https://polyhaven.com/a/hanging_picture_frame_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/hanging_picture_frame_01/hanging_picture_frame_01_1k.gltf",
+      "sha256": "00aaeab14751485287443b4c5cc2ee5673136510595daa6a2948519c116ad47b",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-POLY-HAVEN.txt"
+      }
+    },
+    {
+      "id": "polyhaven-ceramic-vase-01-1k",
+      "name": "Ceramic Vase 01",
+      "siteVersion": "2021-06-15",
+      "embeddedVersion": "1k-gltf-512-textures",
+      "author": "James Ray Cock",
+      "sourceUrl": "https://polyhaven.com/a/ceramic_vase_01",
+      "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/ceramic_vase_01/ceramic_vase_01_1k.gltf",
+      "sha256": "4e2c69eb5bbccf86e9fbf92af438464669d804c1f0eae041ee28651a5b57d91e",
       "license": {
         "spdx": "CC0-1.0",
         "url": "https://polyhaven.com/license",
@@ -177,22 +237,6 @@
       "fallback": {"kind": "box", "materialRole": "fabric"}
     },
     {
-      "id": "polyhaven-modern-arm-chair-01",
-      "kind": "model",
-      "roomTypes": ["living"],
-      "sourceId": "polyhaven-modern-arm-chair-01-1k",
-      "sourceEntry": "1k/modern_arm_chair_01_1k.gltf",
-      "sourceSha256": "d31be520add2603447b43acedbdacf9516866f7c89e9ea9230c9edbac9cc6e6a",
-      "canonicalSize": [0.820344, 1.022852, 0.986562],
-      "materialMode": "tint",
-      "delivery": {
-        "url": "/catalog-assets/models/polyhaven-modern-arm-chair-01.glb",
-        "sha256": "7aa88f1894120d5c85f862e66acc64bd614dd4fe764723269bb1812d508dc75d",
-        "bytes": 2701416
-      },
-      "fallback": {"kind": "box", "materialRole": "fabric"}
-    },
-    {
       "id": "polyhaven-sofa-01",
       "kind": "model",
       "roomTypes": ["living"],
@@ -200,13 +244,93 @@
       "sourceEntry": "1k/Sofa_01_1k.gltf",
       "sourceSha256": "dc9d331a24fc8994606ae5a283826cb28feb3166782f59d006d0f10cc92cc830",
       "canonicalSize": [1.571468, 0.796515, 0.658015],
-      "materialMode": "tint",
+      "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/polyhaven-sofa-01.glb",
         "sha256": "b169f3c20143f2c740f7da7661c6365fced7d57613ef01f8a3575c9f9f53dda0",
         "bytes": 517420
       },
       "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "polyhaven-modern-coffee-table-01",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-modern-coffee-table-01-1k",
+      "sourceEntry": "1k/modern_coffee_table_01_1k.gltf",
+      "sourceSha256": "a35d811da4c174d0c888f23353dda21501763dbf5505c66f57fef4b3f613e50c",
+      "canonicalSize": [0.6, 0.39, 1.20183],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-modern-coffee-table-01.glb",
+        "sha256": "b161554aa0b3e08b5520e1f5772347c1fb56d35790ea77684b2a3c570346b9c3",
+        "bytes": 210808
+      },
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "polyhaven-modern-wooden-cabinet",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-modern-wooden-cabinet-1k",
+      "sourceEntry": "1k/modern_wooden_cabinet_1k.gltf",
+      "sourceSha256": "9c0765063297018e854d11bc27da3cbab3c33904a3be2f5c15f46635df7e857f",
+      "canonicalSize": [2.440001, 0.680143, 0.52],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-modern-wooden-cabinet.glb",
+        "sha256": "a681be07fa7829ee05041a5fa4a15ade2e5a37f143273a28144f7bfcaa52a53f",
+        "bytes": 1261160
+      },
+      "fallback": {"kind": "box", "materialRole": "wood"}
+    },
+    {
+      "id": "polyhaven-potted-plant-04",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-potted-plant-04-1k",
+      "sourceEntry": "1k/potted_plant_04_1k.gltf",
+      "sourceSha256": "b3a3bc3e97da75844999c4da07b7104b6c023f729a7c045979929b9504184339",
+      "canonicalSize": [0.167886, 0.267458, 0.184751],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-potted-plant-04.glb",
+        "sha256": "9e91f08ae0987a5dce14b5b045be7fcb079198e095554e8ea216d1b18dce43f7",
+        "bytes": 367864
+      },
+      "fallback": {"kind": "sphere", "materialRole": "greenery"}
+    },
+    {
+      "id": "polyhaven-hanging-picture-frame-01",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-hanging-picture-frame-01-1k",
+      "sourceEntry": "1k/hanging_picture_frame_01_1k.gltf",
+      "sourceSha256": "00aaeab14751485287443b4c5cc2ee5673136510595daa6a2948519c116ad47b",
+      "canonicalSize": [0.594, 0.841, 0.015749],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-hanging-picture-frame-01.glb",
+        "sha256": "c000e8b529928fa619243c54861c873a28d9d65ba77514689e9969874896897c",
+        "bytes": 351908
+      },
+      "fallback": {"kind": "box", "materialRole": "metal"}
+    },
+    {
+      "id": "polyhaven-ceramic-vase-01",
+      "kind": "model",
+      "roomTypes": ["living"],
+      "sourceId": "polyhaven-ceramic-vase-01-1k",
+      "sourceEntry": "1k/ceramic_vase_01_1k.gltf",
+      "sourceSha256": "4e2c69eb5bbccf86e9fbf92af438464669d804c1f0eae041ee28651a5b57d91e",
+      "canonicalSize": [0.203634, 0.400268, 0.203636],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/polyhaven-ceramic-vase-01.glb",
+        "sha256": "53573b15159dda379e4a16768846124e63ef72dbf1ecf9e0f102c7fb228c320e",
+        "bytes": 312596
+      },
+      "fallback": {"kind": "cylinder", "materialRole": "ceramic"}
     },
     {
       "id": "project-modern-upholstered-bed",
@@ -313,9 +437,10 @@
   "roomRecipes": {
     "living": [
       {"id": "living-sofa", "itemId": "living-sofa", "assetId": "polyhaven-sofa-01", "role": "fabric", "collisionMode": "solid", "position": [0.15, 0.45, 1.35], "size": [2.2, 0.9, 0.92], "rotationYDegrees": 0},
-      {"id": "living-chair-west", "itemId": "living-chair-west", "assetId": "polyhaven-modern-arm-chair-01", "role": "fabric", "collisionMode": "solid", "position": [-1.5, 0.511426, 0.1], "rotationYDegrees": 68},
-      {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "kenney-coffee-table", "role": "wood", "collisionMode": "solid", "position": [0, 0.23, -0.1], "rotationYDegrees": 0},
-      {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "project-sideboard", "role": "wood", "collisionMode": "solid", "position": [0, 0.42, -1.55], "rotationYDegrees": 0},
+      {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "polyhaven-modern-coffee-table-01", "role": "wood", "collisionMode": "solid", "position": [0, 0.195, -0.1], "size": [0.6, 0.39, 1.2], "rotationYDegrees": 90},
+      {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "polyhaven-modern-wooden-cabinet", "role": "wood", "collisionMode": "solid", "position": [0, 0.34, -1.55], "size": [1.9, 0.68, 0.46], "rotationYDegrees": 0},
+      {"id": "living-sideboard-vase", "itemId": "living-sideboard-vase", "assetId": "polyhaven-ceramic-vase-01", "role": "ceramic", "collisionMode": "surface", "position": [-0.55, 0.91, -1.55], "size": [0.23, 0.46, 0.23], "rotationYDegrees": 8},
+      {"id": "living-sideboard-plant", "itemId": "living-sideboard-plant", "assetId": "polyhaven-potted-plant-04", "role": "greenery", "collisionMode": "surface", "position": [0.55, 0.905, -1.55], "size": [0.28, 0.45, 0.31], "rotationYDegrees": -15},
       {"id": "living-planter", "itemId": "living-planter", "assetId": "project-sculptural-planter", "role": "greenery", "collisionMode": "solid", "position": [1.52, 0.64, -1.45], "size": [0.7, 1.28, 0.5], "rotationYDegrees": 0},
       {"id": "living-rug", "itemId": "living-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.25], "rotationYDegrees": 0},
       {"id": "living-pendant", "itemId": "living-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.25], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}

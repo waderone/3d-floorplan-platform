@@ -7,6 +7,7 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:8000',
       '/artifacts': 'http://127.0.0.1:8000',
       '/catalog-assets': 'http://127.0.0.1:8000',
+      '/render-assets': 'http://127.0.0.1:8000',
     },
   },
 })

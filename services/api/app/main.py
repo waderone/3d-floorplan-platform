@@ -258,6 +258,11 @@ def create_app(
         StaticFiles(directory=asset_catalog.directory),
         name="catalog-assets",
     )
+    app.mount(
+        "/render-assets",
+        StaticFiles(directory=render_profile_catalog.directory),
+        name="render-assets",
+    )
 
     def store_image_asset(content: bytes, declared_type: str | None) -> AssetMetadata:
         if len(content) > MAX_UPLOAD_BYTES:

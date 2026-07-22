@@ -18,8 +18,12 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
 
     assert {source.id for source in catalog.manifest.sources} == {
         "kenney-furniture-kit",
-        "polyhaven-modern-arm-chair-01-1k",
         "polyhaven-sofa-01-1k",
+        "polyhaven-modern-coffee-table-01-1k",
+        "polyhaven-modern-wooden-cabinet-1k",
+        "polyhaven-potted-plant-04-1k",
+        "polyhaven-hanging-picture-frame-01-1k",
+        "polyhaven-ceramic-vase-01-1k",
         "project-modern-upholstered-bed-v1",
         "polyhaven-modern-ceiling-lamp-01-1k",
         "project-interior-fixtures-v1",
@@ -31,10 +35,12 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     model_bytes = sum(
         asset.delivery.bytes for asset in catalog.manifest.assets if asset.delivery is not None
     )
-    assert model_bytes == 4_018_740
+    assert model_bytes == 3_821_660
     assert model_bytes < catalog.manifest.mobile_budget_bytes
-    assert catalog.assets["polyhaven-sofa-01"].material_mode == "tint"
-    assert catalog.assets["polyhaven-modern-arm-chair-01"].material_mode == "tint"
+    assert catalog.assets["polyhaven-sofa-01"].material_mode == "preserve"
+    assert catalog.assets["polyhaven-modern-coffee-table-01"].material_mode == "preserve"
+    assert catalog.assets["polyhaven-modern-wooden-cabinet"].material_mode == "preserve"
+    assert catalog.assets["polyhaven-hanging-picture-frame-01"].material_mode == "preserve"
     assert catalog.assets["polyhaven-modern-ceiling-lamp-01"].material_mode == "preserve"
     assert catalog.assets["project-modern-upholstered-bed"].material_mode == "preserve"
     assert catalog.assets["project-warm-minimal-kitchen"].material_mode == "preserve"
@@ -42,6 +48,7 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     assert catalog.recipe("kitchen")[0].asset_id == "project-warm-minimal-kitchen"
     assert catalog.recipe("bathroom")[0].asset_id == "project-warm-minimal-bathroom"
     assert catalog.recipe("living")[-1].size == (0.32, 0.7, 0.32)
+    assert len(catalog.recipe("living")) == 8
 
 
 def test_catalog_rejects_missing_recipe_asset() -> None:

@@ -165,6 +165,18 @@ def test_health(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_realtime_viewer_can_load_audited_render_assets(client: TestClient) -> None:
+    environment = client.get("/render-assets/environment/lebombo_1k.hdr")
+    rug = client.get(
+        "/render-assets/materials/natural-rug/curly_teddy_natural_diff_512.jpg"
+    )
+
+    assert environment.status_code == 200
+    assert len(environment.content) == 1_476_953
+    assert rug.status_code == 200
+    assert len(rug.content) == 78_761
+
+
 def test_cors_preflight_allows_editor_origin(client: TestClient) -> None:
     response = client.options(
         "/api/assets",

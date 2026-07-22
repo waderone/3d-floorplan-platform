@@ -90,8 +90,8 @@ test('builds one view for every furnished customer room', () => {
 
 test('frames a room and preserves the project parameter in share URLs', () => {
   const preset = roomCameraPreset(rooms[2])
-  assert.deepEqual(preset.target, [8, 1.05, 2])
-  assert.ok(Math.abs(preset.radius - 5.091168824543143) < 1e-12)
+  assert.deepEqual(preset.target, [8, 0.95, 2])
+  assert.ok(Math.abs(preset.radius - 3.790092347159895) < 1e-12)
   assert.equal(
     searchWithStyle('?project=customer-home&style=warm-minimal', 'modern-contrast'),
     '?project=customer-home&style=modern-contrast',

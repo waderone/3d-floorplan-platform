@@ -13,6 +13,8 @@ import { MeshoptCompression } from '@babylonjs/core/Meshes/Compression/meshoptCo
 import '@babylonjs/core/Meshes/instancedMesh'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { HDRCubeTexture } from '@babylonjs/core/Materials/Textures/hdrCubeTexture'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
 import { Scene } from '@babylonjs/core/scene'
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
@@ -144,6 +146,18 @@ MeshoptCompression.Configuration = { decoder: { url: meshoptDecoderUrl } }
 const scene = new Scene(engine)
 scene.useRightHandedSystem = true
 scene.clearColor = new Color4(0.91, 0.9, 0.86, 1)
+const environmentTexture = new HDRCubeTexture(
+  apiUrl('/render-assets/environment/lebombo_1k.hdr'),
+  scene,
+  compactDevice ? 64 : 128,
+  false,
+  true,
+  false,
+  true,
+)
+environmentTexture.rotationY = (118 * Math.PI) / 180
+scene.environmentTexture = environmentTexture
+scene.environmentIntensity = 0.72
 
 const camera = new ArcRotateCamera(
   'camera',
@@ -162,7 +176,7 @@ camera.panningSensibility = 180
 camera.inertia = 0.78
 
 const skyLight = new HemisphericLight('sky', new Vector3(0.2, 1, 0.1), scene)
-skyLight.intensity = 1.25
+skyLight.intensity = 0.72
 skyLight.diffuse = new Color3(1, 0.96, 0.88)
 skyLight.groundColor = new Color3(0.35, 0.4, 0.46)
 const sun = new DirectionalLight('sun', new Vector3(-0.45, -1, 0.35), scene)
@@ -188,6 +202,7 @@ let container: AssetContainer | null = null
 let styledAssetContainers: AssetContainer[] = []
 let styledMeshes: AbstractMesh[] = []
 let styledMaterials: PBRMaterial[] = []
+let styledTextures: Texture[] = []
 let styledLights: PointLight[] = []
 let architectureMaterial: PBRMaterial | null = null
 let defaultTarget = Vector3.Zero()
@@ -451,9 +466,11 @@ function clearStyle(): void {
     mesh.dispose(false, false)
   }
   for (const material of styledMaterials) material.dispose()
+  for (const texture of styledTextures) texture.dispose()
   for (const light of styledLights) light.dispose()
   styledMeshes = []
   styledMaterials = []
+  styledTextures = []
   styledLights = []
   architectureMaterial = null
   styledAssetContainers = []
@@ -670,6 +687,9 @@ async function loadCatalogModel(
       mesh.receiveShadows = true
       shadows.addShadowCaster(mesh, true)
     }
+    for (const importedMaterial of assetContainer.materials) {
+      if (importedMaterial instanceof PBRMaterial) importedMaterial.environmentIntensity = 0.92
+    }
     if (asset.materialMode === 'tint') {
       for (const importedMaterial of assetContainer.materials) {
         if (importedMaterial instanceof PBRMaterial) {
@@ -707,6 +727,37 @@ async function applyStyle(
   )
   const architecture = materials.architecture
   if (!architecture) throw new Error('风格包缺少建筑材质')
+  const accent = materials.accent
+  if (style.id === 'warm-minimal' && accent) {
+    const rugAlbedo = new Texture(
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_diff_512.jpg'),
+      scene,
+    )
+    const rugNormal = new Texture(
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_nor_gl_512.jpg'),
+      scene,
+    )
+    const rugRoughness = new Texture(
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_rough_512.jpg'),
+      scene,
+    )
+    for (const texture of [rugAlbedo, rugNormal, rugRoughness]) {
+      texture.uScale = 10
+      texture.vScale = 8
+      styledTextures.push(texture)
+    }
+    rugNormal.level = 0.55
+    rugRoughness.gammaSpace = false
+    accent.albedoColor = Color3.White()
+    accent.albedoTexture = rugAlbedo
+    accent.bumpTexture = rugNormal
+    accent.metallicTexture = rugRoughness
+    accent.metallic = 0
+    accent.roughness = 1
+    accent.useRoughnessFromMetallicTextureAlpha = false
+    accent.useRoughnessFromMetallicTextureGreen = true
+    accent.useMetallnessFromMetallicTextureBlue = false
+  }
   architectureMaterial = architecture
   for (const mesh of model.meshes) {
     if (mesh.getTotalVertices() > 0) {
@@ -729,7 +780,37 @@ async function applyStyle(
     scene,
   )
   floor.position.set(center.x, bounds.minimum.y - floorHeight / 2, center.z)
-  floor.material = materials.floor ?? architecture
+  const floorMaterial = materials.floor ?? architecture
+  if (style.id === 'warm-minimal') {
+    const albedo = new Texture(
+      apiUrl('/render-assets/materials/wood-floor/wood_floor_diff_1k.jpg'),
+      scene,
+    )
+    const normal = new Texture(
+      apiUrl('/render-assets/materials/wood-floor/wood_floor_nor_gl_1k.jpg'),
+      scene,
+    )
+    const roughness = new Texture(
+      apiUrl('/render-assets/materials/wood-floor/wood_floor_rough_1k.jpg'),
+      scene,
+    )
+    for (const texture of [albedo, normal, roughness]) {
+      texture.uScale = floorWidth / 1.7
+      texture.vScale = floorDepth / 1.7
+      styledTextures.push(texture)
+    }
+    normal.level = 0.42
+    roughness.gammaSpace = false
+    floorMaterial.albedoTexture = albedo
+    floorMaterial.bumpTexture = normal
+    floorMaterial.metallicTexture = roughness
+    floorMaterial.metallic = 0
+    floorMaterial.roughness = 1
+    floorMaterial.useRoughnessFromMetallicTextureAlpha = false
+    floorMaterial.useRoughnessFromMetallicTextureGreen = true
+    floorMaterial.useMetallnessFromMetallicTextureBlue = false
+  }
+  floor.material = floorMaterial
   floor.receiveShadows = true
   styledMeshes.push(floor)
   addArchitecturalDetails(layout, bounds.minimum.y, materials, style)
@@ -901,7 +982,7 @@ function applyView(viewId: string): void {
     const option = roomViewOptions.find((candidate) => candidate.id === viewId)
     const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
     if (!room) return
-    setArchitectureOpacity(0.16)
+    setArchitectureOpacity(0.08)
     setDoorDetailsVisible(false)
     const preset = roomCameraPreset(room)
     const inwardX = defaultTarget.x - room.centroid[0]
@@ -909,7 +990,7 @@ function applyView(viewId: string): void {
     camera.alpha = Math.hypot(inwardX, inwardZ) > 0.4
       ? Math.atan2(inwardZ, inwardX)
       : perspectiveAlpha
-    camera.beta = Math.min(perspectiveBeta, Math.PI * 0.25)
+    camera.beta = Math.PI * 0.46
     camera.setTarget(Vector3.FromArray(preset.target))
     const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
     camera.radius = preset.radius * Math.max(1, 0.72 / aspect)
