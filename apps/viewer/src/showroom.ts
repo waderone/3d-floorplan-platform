@@ -26,6 +26,16 @@ export interface RoomCameraPreset {
   radius: number
 }
 
+export interface LivingCameraPlacement {
+  itemId: string
+  position: [number, number, number]
+}
+
+export interface LivingCloseupCameraPreset extends RoomCameraPreset {
+  alpha: number
+  beta: number
+}
+
 const styleIdPattern = /^[a-z0-9][a-z0-9-]{0,63}$/
 const roomTypeOrder = ['living', 'dining', 'bedroom', 'kitchen', 'bathroom'] as const
 const roomTypeLabels = {
@@ -89,6 +99,32 @@ export function roomCameraPreset(room: ShowroomRoom): RoomCameraPreset {
   return {
     target: [room.centroid[0], 0.95, room.centroid[1]],
     radius: Math.max(3.2, Math.hypot(width, depth) * 0.67),
+  }
+}
+
+export function livingCloseupCameraPreset(
+  placements: LivingCameraPlacement[],
+): LivingCloseupCameraPreset | null {
+  const sofa = placements.find((placement) => placement.itemId === 'living-sofa')
+  const table = placements.find((placement) => placement.itemId === 'living-coffee-table')
+  const focal = placements.find((placement) => placement.itemId === 'living-sideboard')
+  if (!sofa || !table || !focal) return null
+  const forwardX = focal.position[0] - sofa.position[0]
+  const forwardZ = focal.position[2] - sofa.position[2]
+  const forwardLength = Math.hypot(forwardX, forwardZ)
+  if (forwardLength < 0.4) return null
+  const unitX = forwardX / forwardLength
+  const unitZ = forwardZ / forwardLength
+  const lateralX = -unitZ
+  const lateralZ = unitX
+  const offsetX = -unitX * 3.3 - lateralX * 0.5
+  const offsetZ = -unitZ * 3.3 - lateralZ * 0.5
+  return {
+    target: [focal.position[0], 1.05, focal.position[2] + 0.2],
+    radius: Math.hypot(offsetX, offsetZ),
+    // Babylon negates the X component of ArcRotateCamera in right-handed scenes.
+    alpha: Math.atan2(offsetZ, -offsetX),
+    beta: Math.PI * 0.47,
   }
 }
 

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   buildRoomViewOptions,
+  livingCloseupCameraPreset,
   parseStyleSummaries,
   roomCameraPreset,
   searchWithStyle,
@@ -97,4 +98,18 @@ test('frames a room and preserves the project parameter in share URLs', () => {
     '?project=customer-home&style=modern-contrast',
   )
   assert.throws(() => searchWithStyle('?project=customer-home', '../invalid'), /风格 id/)
+})
+
+test('builds an eye-level living-room camera from the sofa and focal wall axis', () => {
+  const preset = livingCloseupCameraPreset([
+    { itemId: 'living-sofa', position: [4.95, 0.45, 7.86] },
+    { itemId: 'living-coffee-table', position: [4.8, 0.195, 6.41] },
+    { itemId: 'living-sideboard', position: [4.8, 0.34, 4.96] },
+  ])
+  assert.ok(preset)
+  assert.deepEqual(preset.target, [4.8, 1.05, 5.16])
+  assert.ok(Math.abs(preset.radius - Math.hypot(3.3, 0.5)) < 1e-12)
+  assert.ok(preset.alpha > 0 && preset.alpha < Math.PI / 2)
+  assert.equal(preset.beta, Math.PI * 0.47)
+  assert.equal(livingCloseupCameraPreset([]), null)
 })

@@ -6,7 +6,8 @@ cross-reference and on-disk SHA-256 validation. Model files are normalized to me
 centered on the floor, and delivered as GLB. A model load failure must use the catalog's
 explicit procedural fallback.
 
-Catalog v5 supports multiple audited sources, kitchen/bathroom room recipes, and explicit model material handling. `replace`
+Catalog v6 supports multiple audited sources, kitchen/bathroom room recipes, living-room focal
+fixtures, and explicit model material handling. `replace`
 uses the selected style role, `tint` keeps embedded PBR textures while multiplying the style
 color, and `preserve` keeps the authored materials. The starter set retains Kenney's tiny CC0
 fallbacks and adds fixed Poly Haven 1K glTF snapshots for the sofa, coffee table, wooden cabinet,
@@ -17,6 +18,9 @@ startup validation.
 The project-authored interior fixture generator adds an oak kitchen suite, a bathroom vanity/
 toilet/shower suite, and a sculptural planter. All three are committed as CC0 GLBs with fixed
 generator and delivery hashes; the complete model catalog remains below the 5 MiB mobile budget.
+The project-authored living-room focal generator adds a slim television and a brass/linen floor
+lamp. Both use preserved PBR materials, fixed hashes, and explicit recipe sizing so the client
+close-up stays compositionally balanced.
 
 Regenerate the committed GLBs from an audited extraction of the official ZIP:
 
@@ -71,4 +75,17 @@ PYTHONHASHSEED=0 blender --background --factory-startup --disable-autoexec --pyt
   --python tools/assets/generate_interior_fixtures.py -- --asset planter \
   --output packages/asset-catalog/models/project-sculptural-planter.glb \
   --report /tmp/project-sculptural-planter.json
+```
+
+Regenerate the project-original living-room focal fixtures one asset at a time:
+
+```bash
+PYTHONHASHSEED=0 blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
+  --python tools/assets/generate_living_focal_fixtures.py -- --asset television \
+  --output packages/asset-catalog/models/project-modern-television.glb \
+  --report /tmp/project-modern-television.json
+PYTHONHASHSEED=0 blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
+  --python tools/assets/generate_living_focal_fixtures.py -- --asset floor-lamp \
+  --output packages/asset-catalog/models/project-brass-floor-lamp.glb \
+  --report /tmp/project-brass-floor-lamp.json
 ```

@@ -31,6 +31,7 @@ import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
 import {
   buildRoomViewOptions,
+  livingCloseupCameraPreset,
   parseStyleSummaries,
   roomCameraPreset,
   searchWithStyle,
@@ -413,6 +414,14 @@ function renderRoomViews(layout: LayoutManifest): void {
     button.textContent = option.label
     button.addEventListener('click', () => applyView(option.id))
     roomViews.append(button)
+    if (option.roomType === 'living' && !roomViews.querySelector('[data-view^="closeup:"]')) {
+      const closeup = document.createElement('button')
+      closeup.type = 'button'
+      closeup.dataset.view = `closeup:${option.roomId}`
+      closeup.textContent = '客厅近景'
+      closeup.addEventListener('click', () => applyView(closeup.dataset.view ?? option.id))
+      roomViews.append(closeup)
+    }
   }
 }
 
@@ -517,6 +526,7 @@ function addArchitecturalDetails(
   const architecture = materials.architecture
   const wood = materials.wood ?? architecture
   const metal = materials.metal ?? wood
+  const fabric = materials.fabric ?? architecture
   if (!architecture) return
 
   const seenEdges = new Set<string>()
@@ -573,6 +583,49 @@ function addArchitecturalDetails(
     header.position.set(opening.center[0], floorTop + frameHeight + 0.045, opening.center[1])
     header.rotation.y = angle
     registerDetailMesh(header, wood)
+
+    if (opening.sourceType === 'window') {
+      const relatedRoom = layout.rooms.find((room) => opening.roomIds.includes(room.id))
+      const towardRoom = relatedRoom
+        ? [relatedRoom.centroid[0] - opening.center[0], relatedRoom.centroid[1] - opening.center[1]]
+        : normal
+      const normalSign = normal[0] * towardRoom[0] + normal[1] * towardRoom[1] >= 0 ? 1 : -1
+      const inward = [normal[0] * normalSign, normal[1] * normalSign] as const
+      const curtainHeight = Math.min(2.45, Math.max(1.6, frameHeight + 0.18))
+      const panelWidth = Math.max(0.24, opening.width * 0.3)
+      const foldWidth = panelWidth / 4
+      for (const side of [-1, 1]) {
+        const panelCenter = side * (opening.width / 2 - panelWidth / 2)
+        for (let fold = 0; fold < 4; fold += 1) {
+          const along = panelCenter + (fold - 1.5) * foldWidth
+          const wave = fold % 2 === 0 ? 0.025 : -0.018
+          const curtainFold = MeshBuilder.CreateBox(
+            `curtain-${opening.id}-${side}-${fold}`,
+            { width: foldWidth * 0.9, height: curtainHeight, depth: 0.075 },
+            scene,
+          )
+          curtainFold.position.set(
+            opening.center[0] + tangent[0] * along + inward[0] * (0.11 + wave),
+            floorTop + curtainHeight / 2 + 0.04,
+            opening.center[1] + tangent[1] * along + inward[1] * (0.11 + wave),
+          )
+          curtainFold.rotation.y = angle
+          registerDetailMesh(curtainFold, fabric)
+        }
+      }
+      const rod = MeshBuilder.CreateBox(
+        `curtain-rod-${opening.id}`,
+        { width: opening.width + 0.5, height: 0.035, depth: 0.045 },
+        scene,
+      )
+      rod.position.set(
+        opening.center[0] + inward[0] * 0.08,
+        floorTop + curtainHeight + 0.08,
+        opening.center[1] + inward[1] * 0.08,
+      )
+      rod.rotation.y = angle
+      registerDetailMesh(rod, metal)
+    }
 
     if (opening.sourceType !== 'door' || opening.openingKind === 'opening') continue
     const leafWidth = Math.max(0.45, opening.width - 0.1)
@@ -718,22 +771,6 @@ async function applyStyle(
 ): Promise<{ models: number; fallbacks: number }> {
   clearStyle()
   const warmMinimal = style.id === 'warm-minimal'
-  scene.clearColor = warmMinimal
-    ? new Color4(0.78, 0.74, 0.68, 1)
-    : new Color4(0.91, 0.9, 0.86, 1)
-  scene.environmentIntensity = warmMinimal ? 0.46 : 0.72
-  skyLight.intensity = warmMinimal ? 0.36 : 0.72
-  skyLight.groundColor = warmMinimal
-    ? Color3.FromHexString('#49392F')
-    : new Color3(0.35, 0.4, 0.46)
-  sun.intensity = warmMinimal ? 1.12 : 1.8
-  sun.diffuse = warmMinimal
-    ? Color3.FromHexString('#FFD2A0')
-    : new Color3(1, 0.9, 0.72)
-  scene.imageProcessingConfiguration.exposure = warmMinimal ? 0.94 : 1.08
-  scene.imageProcessingConfiguration.contrast = warmMinimal ? 1.25 : 1.12
-  renderingPipeline.bloomThreshold = warmMinimal ? 0.8 : 0.92
-  renderingPipeline.bloomWeight = warmMinimal ? 0.12 : 0.08
   const materials = Object.fromEntries(
     Object.entries(style.materials).map(([role, value]) => {
       const material = new PBRMaterial(`style-${role}`, scene)
@@ -858,12 +895,24 @@ async function applyStyle(
     }),
   )
 
-  scene.clearColor = Color4.FromColor3(color3(style.environment.backgroundColor), 1)
+  scene.clearColor = warmMinimal
+    ? new Color4(0.84, 0.81, 0.76, 1)
+    : Color4.FromColor3(color3(style.environment.backgroundColor), 1)
+  scene.environmentIntensity = warmMinimal ? 0.5 : 0.72
   skyLight.diffuse = color3(style.environment.ambientColor)
-  skyLight.intensity = style.environment.ambientIntensity * 0.65
-  sun.diffuse = color3(style.environment.sunColor)
-  sun.intensity = style.environment.sunIntensity * 0.55
+  skyLight.intensity = warmMinimal ? 0.42 : style.environment.ambientIntensity * 0.65
+  skyLight.groundColor = warmMinimal
+    ? Color3.FromHexString('#49392F')
+    : new Color3(0.35, 0.4, 0.46)
+  sun.diffuse = warmMinimal
+    ? Color3.FromHexString('#FFD2A0')
+    : color3(style.environment.sunColor)
+  sun.intensity = warmMinimal ? 1.12 : style.environment.sunIntensity * 0.55
   sun.direction = Vector3.FromArray(style.environment.sunDirection)
+  scene.imageProcessingConfiguration.exposure = warmMinimal ? 0.96 : 1.08
+  scene.imageProcessingConfiguration.contrast = warmMinimal ? 1.22 : 1.12
+  renderingPipeline.bloomThreshold = warmMinimal ? 0.8 : 0.92
+  renderingPipeline.bloomWeight = warmMinimal ? 0.12 : 0.08
   perspectiveAlpha = (style.camera.alphaDegrees * Math.PI) / 180
   const betaDegrees =
     layout.furnishedRoomIds.length > 1 ? Math.min(style.camera.betaDegrees, 42) : style.camera.betaDegrees
@@ -999,6 +1048,23 @@ function applyView(viewId: string): void {
     camera.setTarget(defaultTarget)
     camera.radius = defaultRadius
   } else {
+    const closeupRoomId = viewId.startsWith('closeup:') ? viewId.slice('closeup:'.length) : null
+    if (closeupRoomId) {
+      const room = currentLayout.rooms.find((candidate) => candidate.id === closeupRoomId)
+      const preset = livingCloseupCameraPreset(
+        currentLayout.placements.filter((placement) => placement.roomId === closeupRoomId),
+      )
+      if (!room || room.roomType !== 'living' || !preset) return
+      setArchitectureOpacity(0.34)
+      setDoorDetailsVisible(false)
+      camera.alpha = preset.alpha
+      camera.beta = preset.beta
+      camera.setTarget(Vector3.FromArray(preset.target))
+      const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
+      camera.radius = preset.radius * Math.max(1, 0.72 / aspect)
+      setActiveView(viewId)
+      return
+    }
     const option = roomViewOptions.find((candidate) => candidate.id === viewId)
     const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
     if (!room) return
