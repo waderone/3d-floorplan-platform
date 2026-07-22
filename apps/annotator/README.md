@@ -41,7 +41,7 @@ python -m app.recognition_annotation_submission \
 ## 第二人复核
 
 复核员重新载入同一工作包、原图和标注员导出的 `ready-for-review` JSON。右侧
-`SECOND REVIEW` 会显示原标注人和文件 SHA-256 摘要：
+“第二人复核”区域会显示原标注人和文件 SHA-256 摘要：
 
 - 选择“退回修改”时必须填写具体原因；
 - 选择“批准复核”时复核人必须与标注人不同；

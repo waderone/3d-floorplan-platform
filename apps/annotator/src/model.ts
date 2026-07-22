@@ -131,7 +131,7 @@ function wall(value: unknown): WallAnnotation {
   const end = point(item.end, '墙体终点')
   if (start[0] === end[0] && start[1] === end[1]) throw new Error('墙体起终点不能相同')
   return {
-    id: boundedString(item.id, '墙体 ID', 100),
+    id: boundedString(item.id, '墙体编号', 100),
     start,
     end,
     thickness: positiveNumber(item.thickness, '墙厚', 2),
@@ -174,7 +174,7 @@ function room(value: unknown): RoomAnnotation {
   const polygon = item.polygon.map((entry) => point(entry, '房间顶点'))
   validatePolygon(polygon)
   return {
-    id: boundedString(item.id, '房间 ID', 100),
+    id: boundedString(item.id, '房间编号', 100),
     roomType: boundedString(item.roomType, '房间类型', 50),
     polygon,
   }
@@ -184,7 +184,7 @@ function opening(value: unknown): OpeningAnnotation {
   const item = record(value, '门窗')
   if (item.kind !== 'door' && item.kind !== 'window') throw new Error('门窗类型格式无效')
   return {
-    id: boundedString(item.id, '门窗 ID', 100),
+    id: boundedString(item.id, '门窗编号', 100),
     kind: item.kind,
     center: point(item.center, '门窗中心'),
     width: positiveNumber(item.width, '门窗宽度', 20),
@@ -206,7 +206,7 @@ function annotations(value: unknown): Annotations {
     openings: item.openings.map(opening),
   }
   const ids = [...parsed.walls, ...parsed.rooms, ...parsed.openings].map((entry) => entry.id)
-  if (new Set(ids).size !== ids.length) throw new Error('标注 ID 必须唯一')
+  if (new Set(ids).size !== ids.length) throw new Error('标注编号必须唯一')
   return parsed
 }
 
@@ -236,12 +236,12 @@ export function parseWorkpack(value: unknown): AnnotationWorkpack {
   if (!Number.isInteger(widthPixels) || !Number.isInteger(heightPixels)) {
     throw new Error('图片尺寸必须为整数')
   }
-  const imageSha256 = stringValue(image.sha256, '图片 SHA-256')
-  if (!/^[0-9a-f]{64}$/.test(imageSha256)) throw new Error('图片 SHA-256 格式无效')
-  const workpackId = stringValue(root.workpackId, '工作包 ID')
-  if (!/^[0-9a-f]{64}$/.test(workpackId)) throw new Error('工作包 ID 格式无效')
-  const candidateId = stringValue(candidate.candidateId, '候选 ID')
-  if (!/^commons-[1-9][0-9]*$/.test(candidateId)) throw new Error('候选 ID 格式无效')
+  const imageSha256 = stringValue(image.sha256, '图片文件摘要')
+  if (!/^[0-9a-f]{64}$/.test(imageSha256)) throw new Error('图片文件摘要格式无效')
+  const workpackId = stringValue(root.workpackId, '工作包编号')
+  if (!/^[0-9a-f]{64}$/.test(workpackId)) throw new Error('工作包编号格式无效')
+  const candidateId = stringValue(candidate.candidateId, '候选编号')
+  if (!/^commons-[1-9][0-9]*$/.test(candidateId)) throw new Error('候选编号格式无效')
   if (!Array.isArray(suggestions.walls) || !Array.isArray(suggestions.rooms) || !Array.isArray(suggestions.openings)) {
     throw new Error('识别建议列表格式无效')
   }
@@ -507,7 +507,7 @@ export function createAnnotationReview(
   if (submission.workpackId !== workpack.workpackId || submission.candidateId !== workpack.candidateId) {
     throw new Error('待复核标注与当前工作包不匹配')
   }
-  if (!/^[0-9a-f]{64}$/.test(submissionSha256)) throw new Error('标注文件 SHA-256 格式无效')
+  if (!/^[0-9a-f]{64}$/.test(submissionSha256)) throw new Error('标注文件摘要格式无效')
   const reviewer = reviewedBy.trim()
   if (!reviewer || reviewer.length > 100) throw new Error('请填写有效的复核人')
   if (reviewer.toLowerCase() === (submission.annotatedBy ?? '').trim().toLowerCase()) {

@@ -24,6 +24,7 @@ import {
   type Annotations,
   type Point,
 } from './model.ts'
+import { ROOM_TYPE_OPTIONS, rightsStatusLabel, roomTypeLabel } from './labels.ts'
 import './style.css'
 
 type Tool = 'select' | 'wall' | 'room' | 'door' | 'window'
@@ -34,8 +35,9 @@ type DragTarget =
   | { kind: 'opening'; id: string }
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
+const DEMO_WORKPACK_ID = 'd'.repeat(64)
 const rootElement = document.querySelector<HTMLElement>('#app')
-if (!rootElement) throw new Error('Annotator root is missing')
+if (!rootElement) throw new Error('找不到标注台根节点')
 const root: HTMLElement = rootElement
 
 root.innerHTML = `
@@ -43,7 +45,7 @@ root.innerHTML = `
     <header class="topbar">
       <div class="brand-block">
         <span class="brand-symbol" aria-hidden="true">⌗</span>
-        <div><span>DATASET TOOL</span><strong>户型真值标注台</strong></div>
+        <div><span>数据集工具</span><strong>户型真值标注台</strong></div>
       </div>
       <div class="topbar-status">
         <span class="status-dot"></span>
@@ -59,7 +61,7 @@ root.innerHTML = `
 
     <div class="workspace">
       <aside class="tool-panel" aria-label="标注工具">
-        <span class="panel-label">TOOLS</span>
+        <span class="panel-label">标注工具</span>
         <div class="tool-grid">
           <button class="tool active" data-tool="select" type="button"><span>↖</span>选择</button>
           <button class="tool" data-tool="wall" type="button"><span>╱</span>墙体</button>
@@ -71,12 +73,12 @@ root.innerHTML = `
         <button id="cancel-drawing" class="text-button" type="button" disabled>取消当前绘制</button>
 
         <div class="panel-section compact">
-          <label>默认墙厚 <span>m</span><input id="wall-thickness" type="number" min="0.05" max="2" step="0.01" value="0.20" /></label>
-          <label>默认门窗宽 <span>m</span><input id="opening-width" type="number" min="0.1" max="20" step="0.05" value="0.90" /></label>
+          <label>默认墙厚 <span>米</span><input id="wall-thickness" type="number" min="0.05" max="2" step="0.01" value="0.20" /></label>
+          <label>默认门窗宽 <span>米</span><input id="opening-width" type="number" min="0.1" max="20" step="0.05" value="0.90" /></label>
         </div>
 
         <div class="panel-section">
-          <span class="panel-label">REFERENCE</span>
+          <span class="panel-label">参考层</span>
           <label class="switch-row"><input id="show-suggestions" type="checkbox" checked /><span></span>显示机器建议</label>
           <button class="reference-button" data-import="walls" type="button">复制建议墙为待核真值</button>
           <button class="reference-button" data-import="rooms" type="button">复制建议房间为待核真值</button>
@@ -93,7 +95,7 @@ root.innerHTML = `
         <div class="empty-state" id="empty-state">
           <span class="empty-mark">⌗</span>
           <h1>导入标注工作包</h1>
-          <p>先选择 workpack.json，再选择对应原图。图片 SHA-256 与像素尺寸验证通过后才能开始。</p>
+          <p>先选择工作包文件，再选择对应原图。文件摘要与像素尺寸验证通过后才能开始。</p>
           <button id="empty-demo-button" type="button">使用内置演示熟悉操作</button>
         </div>
         <div class="canvas-frame" id="canvas-frame" hidden>
@@ -110,7 +112,7 @@ root.innerHTML = `
             <span><i class="legend-room"></i>真值房间</span>
             <span><i class="legend-opening"></i>门窗</span>
           </div>
-          <div class="coordinate-readout" id="coordinate-readout">x — · z —</div>
+          <div class="coordinate-readout" id="coordinate-readout">横向 — · 纵向 —</div>
         </div>
         <div class="message-bar" id="message-bar" data-kind="info" role="status" aria-live="polite">
           <span></span><p>工作包、原图和导出草稿只在当前浏览器本地处理。</p>
@@ -119,10 +121,10 @@ root.innerHTML = `
 
       <aside class="inspector-panel">
         <div class="dataset-card">
-          <span class="panel-label">WORKPACK</span>
+          <span class="panel-label">工作包</span>
           <strong id="candidate-id">尚未载入</strong>
           <div class="dataset-meta">
-            <span id="workpack-id">ID —</span>
+            <span id="workpack-id">编号 —</span>
             <span id="rights-status" data-status="pending">权利 —</span>
           </div>
           <div class="counts">
@@ -133,12 +135,12 @@ root.innerHTML = `
         </div>
 
         <section class="inspector-section">
-          <div class="section-heading"><span class="panel-label">INSPECTOR</span><button id="delete-selection" type="button" hidden>删除</button></div>
+          <div class="section-heading"><span class="panel-label">属性编辑</span><button id="delete-selection" type="button" hidden>删除</button></div>
           <div id="selection-inspector" class="selection-empty">选择真值几何后可编辑属性；拖动圆形控制点可修改端点、中心或房间顶点。</div>
         </section>
 
         <section class="inspector-section export-section">
-          <span class="panel-label">HANDOFF</span>
+          <span class="panel-label">标注交接</span>
           <div class="timing-card" id="timing-card" data-state="waiting">
             <div><span>有效编辑时间</span><strong id="timing-value">00:00</strong></div>
             <small id="timing-state">等待首次真值编辑</small>
@@ -153,15 +155,15 @@ root.innerHTML = `
         </section>
 
         <section class="inspector-section review-section">
-          <span class="panel-label">SECOND REVIEW</span>
-          <p id="review-target" class="review-target">载入 ready-for-review 标注后可进行第二人复核。</p>
+          <span class="panel-label">第二人复核</span>
+          <p id="review-target" class="review-target">载入待复核标注后可进行第二人复核。</p>
           <label>复核人<input id="reviewed-by" type="text" maxlength="100" placeholder="必须与标注人不同" /></label>
           <label>复核说明<textarea id="review-comment" maxlength="1000" rows="3" placeholder="退回时必须说明需要修改的内容"></textarea></label>
           <div class="review-buttons">
             <button id="request-changes" class="ghost-button" type="button" disabled>退回修改</button>
             <button id="approve-review" class="primary-button" type="button" disabled>批准复核</button>
           </div>
-          <p class="handoff-note">复核记录绑定原标注文件 SHA-256；内容变化后必须重新复核。</p>
+          <p class="handoff-note">复核记录绑定原标注文件摘要；内容变化后必须重新复核。</p>
         </section>
       </aside>
     </div>
@@ -170,7 +172,7 @@ root.innerHTML = `
 
 function element<T extends Element>(selector: string): T {
   const found = root.querySelector<T>(selector)
-  if (!found) throw new Error(`Annotator element is missing: ${selector}`)
+  if (!found) throw new Error(`找不到标注台元素：${selector}`)
   return found
 }
 
@@ -393,7 +395,7 @@ function appendOpening(
   const label = svgNode('text', {
     x: center[0], y: center[1] + 4, class: `${className}-label`, 'text-anchor': 'middle',
   })
-  label.textContent = opening.kind === 'door' ? 'D' : 'W'
+  label.textContent = opening.kind === 'door' ? '门' : '窗'
   if (selectable) {
     const listener = (event: PointerEvent) => selectShape(event, { kind: 'opening', id: opening.id })
     circle.addEventListener('pointerdown', listener)
@@ -503,38 +505,43 @@ function renderInspector(): void {
   if (selection.kind === 'wall') {
     const item = annotations.walls.find((entry) => entry.id === selectedId)
     if (!item) return
+    const itemNumber = annotations.walls.findIndex((entry) => entry.id === selectedId) + 1
     selectionInspector.innerHTML = `
-      <strong>${escapeHtml(item.id)}</strong><span>墙体</span>
+      <strong>墙体 ${itemNumber}</strong><span>几何对象</span>
       <div class="field-grid">
-        ${numberInput('起点 X', 'start-0', item.start[0])}
-        ${numberInput('起点 Z', 'start-1', item.start[1])}
-        ${numberInput('终点 X', 'end-0', item.end[0])}
-        ${numberInput('终点 Z', 'end-1', item.end[1])}
+        ${numberInput('起点横向坐标', 'start-0', item.start[0])}
+        ${numberInput('起点纵向坐标', 'start-1', item.start[1])}
+        ${numberInput('终点横向坐标', 'end-0', item.end[0])}
+        ${numberInput('终点纵向坐标', 'end-1', item.end[1])}
       </div>
-      ${numberInput('墙厚（m）', 'thickness', item.thickness)}
+      ${numberInput('墙厚（米）', 'thickness', item.thickness)}
     `
   } else if (selection.kind === 'room') {
     const item = annotations.rooms.find((entry) => entry.id === selectedId)
     if (!item) return
+    const itemNumber = annotations.rooms.findIndex((entry) => entry.id === selectedId) + 1
     selectionInspector.innerHTML = `
-      <strong>${escapeHtml(item.id)}</strong><span>${item.polygon.length} 个顶点</span>
+      <strong>房间 ${itemNumber}</strong><span>${item.polygon.length} 个顶点</span>
       <label>房间类型
-        <input data-field="roomType" list="room-types" value="${escapeHtml(item.roomType)}" />
-        <datalist id="room-types"><option value="living"><option value="dining"><option value="bedroom"><option value="kitchen"><option value="bathroom"><option value="balcony"><option value="unknown"></datalist>
+        <select data-field="roomType">
+          ${ROOM_TYPE_OPTIONS.map((option) => `<option value="${option.value}" ${item.roomType === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+          ${ROOM_TYPE_OPTIONS.some((option) => option.value === item.roomType) ? '' : `<option value="${escapeHtml(item.roomType)}" selected>${roomTypeLabel(item.roomType)}</option>`}
+        </select>
       </label>
       <p>拖动画布上的控制点编辑房间边界。</p>
     `
   } else {
     const item = annotations.openings.find((entry) => entry.id === selectedId)
     if (!item) return
+    const itemNumber = annotations.openings.findIndex((entry) => entry.id === selectedId) + 1
     selectionInspector.innerHTML = `
-      <strong>${escapeHtml(item.id)}</strong><span>门窗</span>
+      <strong>${item.kind === 'door' ? '门' : '窗'} ${itemNumber}</strong><span>几何对象</span>
       <label>类型<select data-field="kind"><option value="door" ${item.kind === 'door' ? 'selected' : ''}>门</option><option value="window" ${item.kind === 'window' ? 'selected' : ''}>窗</option></select></label>
       <div class="field-grid">
-        ${numberInput('中心 X', 'center-0', item.center[0])}
-        ${numberInput('中心 Z', 'center-1', item.center[1])}
+        ${numberInput('中心横向坐标', 'center-0', item.center[0])}
+        ${numberInput('中心纵向坐标', 'center-1', item.center[1])}
       </div>
-      ${numberInput('净宽（m）', 'width', item.width)}
+      ${numberInput('净宽（米）', 'width', item.width)}
     `
   }
   selectionInspector.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-field]').forEach((input) => {
@@ -573,19 +580,22 @@ function updateSelectedField(field: string, rawValue: string): void {
 
 function render(): void {
   const ready = isReady()
+  const candidateName = workpack?.workpackId === DEMO_WORKPACK_ID ? '内置演示' : workpack?.candidateId
   shell.dataset.ready = String(ready)
   canvasFrame.hidden = !ready
   emptyState.hidden = ready
   element<HTMLElement>('#top-status').textContent = ready
-    ? `${workpack?.candidateId} · 图片已校验`
+    ? `${candidateName} · 图片已校验`
     : workpack
       ? '工作包已载入 · 等待对应原图'
       : '等待导入工作包'
-  element<HTMLElement>('#candidate-id').textContent = workpack?.candidateId ?? '尚未载入'
-  element<HTMLElement>('#workpack-id').textContent = workpack ? `ID ${workpack.workpackId.slice(0, 8)}…` : 'ID —'
+  element<HTMLElement>('#candidate-id').textContent = candidateName ?? '尚未载入'
+  element<HTMLElement>('#workpack-id').textContent = workpack
+    ? `编号 ${workpack.workpackId === DEMO_WORKPACK_ID ? '演示' : `${workpack.workpackId.slice(0, 8)}…`}`
+    : '编号 —'
   const rights = element<HTMLElement>('#rights-status')
   rights.dataset.status = workpack?.rightsStatus ?? 'pending'
-  rights.textContent = workpack ? `权利 ${workpack.rightsStatus}` : '权利 —'
+  rights.textContent = workpack ? `权利 ${rightsStatusLabel(workpack.rightsStatus)}` : '权利 —'
   element<HTMLElement>('#wall-count').textContent = String(annotations.walls.length)
   element<HTMLElement>('#room-count').textContent = String(annotations.rooms.length)
   element<HTMLElement>('#opening-count').textContent = String(annotations.openings.length)
@@ -604,8 +614,8 @@ function render(): void {
   requestChangesButton.disabled = !canReview
   approveReviewButton.disabled = !canReview
   element<HTMLElement>('#review-target').textContent = reviewTarget
-    ? `${reviewTarget.fileName} · 标注人 ${reviewTarget.submission.annotatedBy ?? '未知'} · SHA ${reviewTarget.sha256.slice(0, 8)}…`
-    : '载入 ready-for-review 标注后可进行第二人复核。'
+    ? `${reviewTarget.fileName} · 标注人 ${reviewTarget.submission.annotatedBy ?? '未知'} · 摘要 ${reviewTarget.sha256.slice(0, 8)}…`
+    : '载入待复核标注后可进行第二人复核。'
   element<HTMLButtonElement>('#export-draft').disabled = !ready
   element<HTMLButtonElement>('#export-review').disabled = !ready
   if (ready) renderCanvas()
@@ -716,7 +726,7 @@ async function verifyAndLoadImage(blob: Blob, filename: string): Promise<void> {
   if (!workpack) throw new Error('请先载入工作包')
   const content = await blob.arrayBuffer()
   const digest = await sha256Hex(content)
-  if (digest !== workpack.image.sha256) throw new Error('原图 SHA-256 与工作包不一致')
+  if (digest !== workpack.image.sha256) throw new Error('原图文件摘要与工作包不一致')
   const nextUrl = URL.createObjectURL(blob)
   const probe = new Image()
   probe.src = nextUrl
@@ -732,7 +742,7 @@ async function verifyAndLoadImage(blob: Blob, filename: string): Promise<void> {
   planImage.setAttribute('href', nextUrl)
   planImage.setAttribute('width', String(probe.naturalWidth))
   planImage.setAttribute('height', String(probe.naturalHeight))
-  setMessage(`${filename} 已通过 SHA-256 与像素尺寸校验`, 'success')
+  setMessage(`${filename} 已通过文件摘要与像素尺寸校验`, 'success')
   render()
 }
 
@@ -798,11 +808,11 @@ function downloadReview(decision: 'approved' | 'changes-requested'): void {
 }
 
 async function loadDemo(): Promise<void> {
-  const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700"><rect width="1000" height="700" fill="#f8f5ec"/><g fill="none" stroke="#26312e" stroke-width="18"><rect x="80" y="60" width="840" height="580"/><path d="M500 60V270M500 380V640M80 350H300M390 350H700M790 350H920"/></g><g fill="#837c6d" font-family="sans-serif" font-size="30" text-anchor="middle"><text x="285" y="200">LIVING</text><text x="715" y="200">BEDROOM</text><text x="285" y="520">KITCHEN</text><text x="715" y="520">BEDROOM</text></g></svg>`
+  const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700"><rect width="1000" height="700" fill="#f8f5ec"/><g fill="none" stroke="#26312e" stroke-width="18"><rect x="80" y="60" width="840" height="580"/><path d="M500 60V270M500 380V640M80 350H300M390 350H700M790 350H920"/></g><g fill="#837c6d" font-family="sans-serif" font-size="30" text-anchor="middle"><text x="285" y="200">客厅</text><text x="715" y="200">卧室</text><text x="285" y="520">厨房</text><text x="715" y="520">卧室</text></g></svg>`
   const blob = new Blob([svgText], { type: 'image/svg+xml' })
   const digest = await sha256Hex(await blob.arrayBuffer())
   workpack = {
-    workpackId: 'd'.repeat(64),
+    workpackId: DEMO_WORKPACK_ID,
     candidateId: 'commons-1',
     rightsStatus: 'pending',
     image: { file: 'demo-floorplan.svg', sha256: digest, widthPixels: 1000, heightPixels: 700 },
@@ -895,7 +905,7 @@ element<HTMLInputElement>('#draft-file').addEventListener('change', async (event
 svg.addEventListener('pointerdown', handleCanvasPointer)
 svg.addEventListener('pointermove', (event) => {
   const value = eventPoint(event)
-  if (value) element<HTMLElement>('#coordinate-readout').textContent = `x ${value[0].toFixed(2)} · z ${value[1].toFixed(2)} m`
+  if (value) element<HTMLElement>('#coordinate-readout').textContent = `横向 ${value[0].toFixed(2)} · 纵向 ${value[1].toFixed(2)} 米`
   if (!dragTarget || !value) return
   mutateDrag(value)
   renderCanvas()

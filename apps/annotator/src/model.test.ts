@@ -104,7 +104,7 @@ test('validates workpack identity and review-ready requirements', () => {
 test('rejects malformed identities and values beyond backend limits', () => {
   const malformed = workpackValue()
   malformed.workpackId = 'not-a-hash'
-  assert.throws(() => parseWorkpack(malformed), /工作包 ID 格式无效/)
+  assert.throws(() => parseWorkpack(malformed), /工作包编号格式无效/)
 
   const workpack = parseWorkpack(workpackValue())
   const draft = createSubmission(workpack, emptyAnnotations(), 'draft', '', '')
