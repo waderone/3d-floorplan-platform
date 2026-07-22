@@ -47,6 +47,7 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     assert catalog.assets["project-warm-minimal-bathroom"].material_mode == "preserve"
     assert catalog.recipe("kitchen")[0].asset_id == "project-warm-minimal-kitchen"
     assert catalog.recipe("bathroom")[0].asset_id == "project-warm-minimal-bathroom"
+    assert catalog.recipe("living")[0].rotation_y_degrees == 180
     assert catalog.recipe("living")[-1].size == (0.32, 0.7, 0.32)
     assert len(catalog.recipe("living")) == 8
 

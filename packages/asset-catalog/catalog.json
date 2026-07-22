@@ -436,7 +436,7 @@
   ],
   "roomRecipes": {
     "living": [
-      {"id": "living-sofa", "itemId": "living-sofa", "assetId": "polyhaven-sofa-01", "role": "fabric", "collisionMode": "solid", "position": [0.15, 0.45, 1.35], "size": [2.2, 0.9, 0.92], "rotationYDegrees": 0},
+      {"id": "living-sofa", "itemId": "living-sofa", "assetId": "polyhaven-sofa-01", "role": "fabric", "collisionMode": "solid", "position": [0.15, 0.45, 1.35], "size": [2.2, 0.9, 0.92], "rotationYDegrees": 180},
       {"id": "living-coffee-table", "itemId": "living-coffee-table", "assetId": "polyhaven-modern-coffee-table-01", "role": "wood", "collisionMode": "solid", "position": [0, 0.195, -0.1], "size": [0.6, 0.39, 1.2], "rotationYDegrees": 90},
       {"id": "living-sideboard", "itemId": "living-sideboard", "assetId": "polyhaven-modern-wooden-cabinet", "role": "wood", "collisionMode": "solid", "position": [0, 0.34, -1.55], "size": [1.9, 0.68, 0.46], "rotationYDegrees": 0},
       {"id": "living-sideboard-vase", "itemId": "living-sideboard-vase", "assetId": "polyhaven-ceramic-vase-01", "role": "ceramic", "collisionMode": "surface", "position": [-0.55, 0.91, -1.55], "size": [0.23, 0.46, 0.23], "rotationYDegrees": 8},

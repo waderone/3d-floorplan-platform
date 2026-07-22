@@ -618,8 +618,11 @@ function addArchitecturalDetails(
       scene,
     )
     light.diffuse = warmLight
-    light.intensity = compactDevice ? 0.48 : 0.65
-    light.range = Math.max(3.2, Math.sqrt(room.area) * 1.7)
+    const livingFocus = style.id === 'warm-minimal' && room.roomType === 'living'
+    light.intensity = livingFocus
+      ? (compactDevice ? 0.82 : 1.05)
+      : (compactDevice ? 0.42 : 0.56)
+    light.range = Math.max(3.2, Math.sqrt(room.area) * (livingFocus ? 1.35 : 1.55))
     styledLights.push(light)
   }
 }
@@ -714,6 +717,23 @@ async function applyStyle(
   model: AssetContainer,
 ): Promise<{ models: number; fallbacks: number }> {
   clearStyle()
+  const warmMinimal = style.id === 'warm-minimal'
+  scene.clearColor = warmMinimal
+    ? new Color4(0.78, 0.74, 0.68, 1)
+    : new Color4(0.91, 0.9, 0.86, 1)
+  scene.environmentIntensity = warmMinimal ? 0.46 : 0.72
+  skyLight.intensity = warmMinimal ? 0.36 : 0.72
+  skyLight.groundColor = warmMinimal
+    ? Color3.FromHexString('#49392F')
+    : new Color3(0.35, 0.4, 0.46)
+  sun.intensity = warmMinimal ? 1.12 : 1.8
+  sun.diffuse = warmMinimal
+    ? Color3.FromHexString('#FFD2A0')
+    : new Color3(1, 0.9, 0.72)
+  scene.imageProcessingConfiguration.exposure = warmMinimal ? 0.94 : 1.08
+  scene.imageProcessingConfiguration.contrast = warmMinimal ? 1.25 : 1.12
+  renderingPipeline.bloomThreshold = warmMinimal ? 0.8 : 0.92
+  renderingPipeline.bloomWeight = warmMinimal ? 0.12 : 0.08
   const materials = Object.fromEntries(
     Object.entries(style.materials).map(([role, value]) => {
       const material = new PBRMaterial(`style-${role}`, scene)
@@ -982,7 +1002,7 @@ function applyView(viewId: string): void {
     const option = roomViewOptions.find((candidate) => candidate.id === viewId)
     const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
     if (!room) return
-    setArchitectureOpacity(0.08)
+    setArchitectureOpacity(0.28)
     setDoorDetailsVisible(false)
     const preset = roomCameraPreset(room)
     const inwardX = defaultTarget.x - room.centroid[0]
