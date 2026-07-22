@@ -14,6 +14,7 @@
 - 可审计户型评测集、墙/房间/门窗指标和人工修正时间报告；
 - 户型标注工作包与真值提交文件的离线身份、几何和交接状态校验；
 - 真实评测样本的批量生产看板、状态审计和已筛选工作包准备；
+- 已晋级样本的版本化 manifest 发布与几何/主链路联合评测；
 - 可审计真实家具目录、静态 GLB、完整性与移动预算校验；
 - Zone/Slab 房间提取、客厅/餐厅/卧室确定性整屋布局和明确回退状态；
 - 健康检查。
@@ -278,6 +279,30 @@ python -m app.recognition_sample_production status --help
 
 `prepare` 只生成缺失的已筛选候选工作包；`status` 重新验证图片、工作包、标注、复核、权利与
 正式样本，并输出确定性阶段报告。目录约定和完整命令见数据集 README。
+
+### 真实样本批次发布
+
+当一个或多个候选已经完成人工权利审核、计时标注、第二人复核和单样本晋级后，使用一个命令
+组装正式 manifest，并对完全相同的样本集合连续运行识别几何与三风格主链路闸门：
+
+```bash
+FLOORPLAN_NODE_BIN=/absolute/path/to/node \
+python -m app.recognition_batch_release \
+  --queue ../../datasets/recognition/private/commons-candidates/queue.json \
+  --reviews ../../datasets/recognition/private/candidate-reviews.json \
+  --image-dir ../../datasets/recognition/private/commons-candidates/images \
+  --production-root ../../datasets/recognition/private/annotation-workpacks \
+  --dataset-root ../../datasets/recognition \
+  --dataset-id commercial-floorplans \
+  --dataset-version 1 \
+  --manifest ../../datasets/recognition/manifest.json \
+  --reports-dir ../../datasets/recognition/reports/release-1
+```
+
+manifest 必须直接位于 `dataset-root`，因为样本图片路径相对它解析。同一版本内容相同可幂等
+重跑；内容变化会要求提升 `dataset-version`，不会静默覆盖。输出包含生产状态、几何指标、主链路
+可靠性和批次摘要四份报告。存在损坏的 `sample.json` 会阻止整批发布；尚未晋级的候选继续留在
+看板中，但不会进入统计分母。
 
 ## 测试
 

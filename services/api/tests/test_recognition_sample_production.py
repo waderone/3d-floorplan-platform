@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from app.recognition_annotation_review import (
     build_evaluation_sample,
@@ -13,6 +14,12 @@ from app.recognition_annotation_review import (
 )
 from app.recognition_annotation_workpack import AnnotationWorkpack, CandidateReviewFile
 from app.recognition_candidates import CommonsCandidateQueue
+from app.recognition_evaluation import EvaluationDataset
+from app.recognition_batch_release import (
+    build_promoted_dataset,
+    release_promoted_batch,
+    write_dataset_manifest,
+)
 from app.recognition_sample_production import (
     build_production_report,
     prepare_selected_workpacks,
@@ -355,3 +362,129 @@ def test_report_tracks_review_rights_promotion_and_complete_sample(tmp_path: Pat
     complete = build_production_report(queue, approved_reviews, images, production)
     assert complete.candidates[0].stage == "promoted"
     assert complete.stage_counts == {"promoted": 1}
+
+    dataset = build_promoted_dataset(
+        complete,
+        production,
+        tmp_path,
+        "commercial-floorplans",
+        1,
+    )
+    assert [sample.sample_id for sample in dataset.samples] == ["commons-1"]
+    manifest = tmp_path / "manifest.json"
+    assert write_dataset_manifest(manifest, dataset) == "created"
+    assert write_dataset_manifest(manifest, dataset) == "existing"
+
+    summary = release_promoted_batch(
+        queue,
+        approved_reviews,
+        images,
+        production,
+        tmp_path,
+        "commercial-floorplans",
+        1,
+        manifest,
+        tmp_path / "reports",
+    )
+    assert summary["dataset"] == {
+        "id": "commercial-floorplans",
+        "version": 1,
+        "sampleCount": 1,
+        "manifestSha256": summary["dataset"]["manifestSha256"],
+        "manifestResult": "existing",
+    }
+    assert len(summary["dataset"]["manifestSha256"]) == 64
+    assert summary["production"]["stageCounts"] == {"promoted": 1}
+    assert summary["mainline"]["aggregate"]["completeSamples"] == 1
+    assert {path.name for path in (tmp_path / "reports").iterdir()} == {
+        "batch-summary.json",
+        "mainline-report.json",
+        "production-report.json",
+        "recognition-report.json",
+    }
+    repeated = release_promoted_batch(
+        queue,
+        approved_reviews,
+        images,
+        production,
+        tmp_path,
+        "commercial-floorplans",
+        1,
+        manifest,
+        tmp_path / "reports",
+    )
+    assert repeated["batchId"] == summary["batchId"]
+
+
+def test_batch_release_refuses_unpromoted_or_changed_manifest(tmp_path: Path) -> None:
+    images = tmp_path / "images"
+    images.mkdir()
+    sha256, size = _image(images / "commons-1.png")
+    queue = _queue(sha256, size)
+    report = build_production_report(
+        queue,
+        _reviews(),
+        images,
+        tmp_path / "production",
+    )
+    with pytest.raises(ValueError, match="no promoted samples"):
+        build_promoted_dataset(
+            report,
+            tmp_path / "production",
+            tmp_path,
+            "commercial-floorplans",
+            1,
+        )
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "1.0",
+                "datasetId": "commercial-floorplans",
+                "datasetVersion": 1,
+                "samples": [
+                    {
+                        "sampleId": "existing",
+                        "imagePath": "images/existing.png",
+                        "imageSha256": "a" * 64,
+                        "planWidthMeters": 10,
+                        "split": "test",
+                        "annotationStatus": "complete",
+                        "source": {
+                            "sourceType": "project-owned",
+                            "title": "Existing",
+                            "author": "Project",
+                            "sourceUrl": "https://example.com/existing",
+                            "licenseId": "Project-Owned",
+                            "licenseUrl": "https://example.com/license",
+                            "rightsEvidenceUrl": "https://example.com/rights",
+                            "commercialUseConfirmed": True,
+                            "redistributionAllowed": False,
+                            "storageMode": "local-only",
+                            "reviewedBy": "rights-reviewer",
+                            "reviewedAt": "2026-07-21",
+                        },
+                        "annotations": {
+                            "coordinateSystem": "plan-bottom-left-x-right-z-up-m",
+                            "walls": [
+                                {
+                                    "id": "wall-1",
+                                    "start": [0, 0],
+                                    "end": [1, 0],
+                                    "thickness": 0.2,
+                                }
+                            ],
+                            "rooms": [],
+                            "openings": [],
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    changed = json.loads(manifest.read_text(encoding="utf-8"))
+    changed["samples"][0]["sampleId"] = "changed"
+    with pytest.raises(ValueError, match="increment datasetVersion"):
+        write_dataset_manifest(manifest, EvaluationDataset.model_validate(changed))

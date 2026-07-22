@@ -67,6 +67,7 @@
 - [权威门窗开口与动线净空布局](docs/adr/0019-authoritative-openings-and-circulation.md)
 - [户型图到客户实时 3D 的主线基准](docs/adr/0020-floorplan-to-realtime-baseline.md)
 - [真实户型主链路可靠性报告](docs/adr/0021-mainline-reliability-evaluation.md)
+- [真实样本批次发布与联合评测](docs/adr/0022-recognition-batch-release.md)
 
 ## 仓库结构
 
@@ -88,3 +89,7 @@ outputs/              立项与交付文档
 离线可靠性报告已经可以对同一份商业评测 manifest 逐样本运行真实识别、结构场景、GLB 优化和
 全部风格布局，并把失败归到明确阶段。当前只有项目自有受控 fixture 完成主线验证，不将其 1/1
 结果宣传为真实户型成功率；正式百分比等待 20～50 个 complete 样本晋级后生成。
+
+已晋级样本现在可通过单个批次命令确定性组装为版本化 manifest，并对同一批输入同时产出生产
+状态、识别几何和三风格主链路报告。该命令只消费已经通过权利审核、计时标注和第二人复核的
+`promoted` 样本，不会自动批准或代签仍待人工处理的候选。

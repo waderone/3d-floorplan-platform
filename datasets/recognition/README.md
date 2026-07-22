@@ -172,13 +172,39 @@ python -m app.recognition_annotation_review promote \
   --storage-mode local-only \
   --source-title "Sanitized source title" \
   --source-author "Verified source author" \
-  --output ../../datasets/recognition/private/promoted/<candidate>-sample.json
+  --output ../../datasets/recognition/private/annotation-workpacks/<candidate>/sample.json
 ```
 
 输出是可加入 `manifest.json.samples[]` 的 `EvaluationSample`，包含双人标注 provenance 以及由
-首轮标注计时生成的 `correctionSessions`。工具不会自动修改 manifest 或提升 `datasetVersion`。
+首轮标注计时生成的 `correctionSessions`。单样本晋级不会自动修改 manifest 或提升
+`datasetVersion`；批次发布工具负责重新审计后组装正式清单。
 私有原图、工作包、标注、review 和未发布样本不得
 因为导出而进入 Git。
+
+## 发布批次并运行双闸门
+
+至少一个候选在生产看板中达到 `promoted` 后，可一次生成正式 manifest、识别几何报告和客户
+三风格主链路报告：
+
+```bash
+cd services/api
+FLOORPLAN_NODE_BIN=/absolute/path/to/node \
+python -m app.recognition_batch_release \
+  --queue ../../datasets/recognition/private/commons-candidates/queue.json \
+  --reviews ../../datasets/recognition/private/candidate-reviews.json \
+  --image-dir ../../datasets/recognition/private/commons-candidates/images \
+  --production-root ../../datasets/recognition/private/annotation-workpacks \
+  --dataset-root ../../datasets/recognition \
+  --dataset-id commercial-floorplans \
+  --dataset-version 1 \
+  --manifest ../../datasets/recognition/manifest.json \
+  --reports-dir ../../datasets/recognition/reports/release-1
+```
+
+工具只纳入重新验证为 `promoted` 的样本；权利 pending、缺少第二人复核或数据损坏均不能进入
+manifest。manifest 必须直接放在 dataset root。同版本、同内容可重复运行；样本内容变化必须
+提升版本号。报告目录会生成 `production-report.json`、`recognition-report.json`、
+`mainline-report.json` 和 `batch-summary.json`。
 
 ## 运行评测
 
