@@ -21,7 +21,7 @@ Viewer 面向客户提供全屋/鸟瞰和按实际 layout 动态生成的客厅�
 全部可用风格，同一个建筑 GLB 可即时替换 PBR 建筑、地面、真实家具角色材质、陈设和灯光；
 切换后 URL 的 `style` 参数同步更新，可直接分享当前方案，不会重新下载建筑模型。
 
-资产目录 v8 为真实模型声明 `replace`、`tint` 或 `preserve`。其中 `tint` 会保留 glTF 内嵌
+资产目录 v9 为真实模型声明 `replace`、`tint` 或 `preserve`。其中 `tint` 会保留 glTF 内嵌
 的 base color、AO/rough/metal 与法线纹理，只将风格角色色作为乘算色；`preserve` 用于玻璃、
 金属等不应被整件刷色的灯具。商业卧室床组使用 `tint`，在保留 Cotton Jersey 法线与粗糙度
 纹理的同时响应暖木、北欧和现代三套 fabric 色。实例尺寸可由受校验 recipe 覆盖，Viewer

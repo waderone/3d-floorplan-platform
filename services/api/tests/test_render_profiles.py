@@ -24,8 +24,8 @@ def test_render_profiles_freeze_preview_and_quality_contracts() -> None:
         "living",
         "bedroom",
     ]
-    assert sum(resource.delivery.bytes for resource in catalog.manifest.resources) == 3_429_065
-    assert catalog.manifest.version == 2
+    assert sum(resource.delivery.bytes for resource in catalog.manifest.resources) == 5_224_351
+    assert catalog.manifest.version == 3
     assert "natural-rug" in catalog.manifest.material_sets
 
 

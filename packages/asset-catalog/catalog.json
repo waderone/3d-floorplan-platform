@@ -1,8 +1,8 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 8,
-  "mobileBudgetBytes": 5242880,
+  "version": 9,
+  "mobileBudgetBytes": 8388608,
   "sources": [
     {
       "id": "kenney-furniture-kit",
@@ -38,7 +38,7 @@
       "id": "polyhaven-modern-coffee-table-01-1k",
       "name": "Modern Coffee Table 01",
       "siteVersion": "2021-12-29",
-      "embeddedVersion": "1k-gltf-512-textures",
+      "embeddedVersion": "1k-gltf",
       "author": "Amin",
       "sourceUrl": "https://polyhaven.com/a/modern_coffee_table_01",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_coffee_table_01/modern_coffee_table_01_1k.gltf",
@@ -53,7 +53,7 @@
       "id": "polyhaven-modern-wooden-cabinet-1k",
       "name": "Modern Wooden Cabinet",
       "siteVersion": "2023-08-02",
-      "embeddedVersion": "1k-gltf-512-textures",
+      "embeddedVersion": "1k-gltf",
       "author": "Patrik Pangerl",
       "sourceUrl": "https://polyhaven.com/a/modern_wooden_cabinet",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_wooden_cabinet/modern_wooden_cabinet_1k.gltf",
@@ -293,8 +293,8 @@
       "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/polyhaven-modern-coffee-table-01.glb",
-        "sha256": "b161554aa0b3e08b5520e1f5772347c1fb56d35790ea77684b2a3c570346b9c3",
-        "bytes": 210808
+        "sha256": "c8b04268661af0bc35516d03ba297816d318e3262851c93cf8f78315593af1aa",
+        "bytes": 1330552
       },
       "fallback": {"kind": "box", "materialRole": "wood"}
     },
@@ -309,8 +309,8 @@
       "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/polyhaven-modern-wooden-cabinet.glb",
-        "sha256": "a681be07fa7829ee05041a5fa4a15ade2e5a37f143273a28144f7bfcaa52a53f",
-        "bytes": 1261160
+        "sha256": "56182e7d68732e8523854c108236a519b5202ba0846102b8e114f41ad204b163",
+        "bytes": 2856236
       },
       "fallback": {"kind": "box", "materialRole": "wood"}
     },

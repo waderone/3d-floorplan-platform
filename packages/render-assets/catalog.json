@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "id": "interior-rendering",
-  "version": 2,
+  "version": 3,
   "license": {
     "spdx": "CC0-1.0",
     "url": "https://polyhaven.com/license",
@@ -63,9 +63,9 @@
       "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_diff_1k.jpg",
       "delivery": {
-        "path": "materials/natural-rug/curly_teddy_natural_diff_512.jpg",
-        "sha256": "ef1a2d2ace17aaa3bc29dd06f638b3df4ce0f4530bb32e3691c0c34a669fc514",
-        "bytes": 78761
+        "path": "materials/natural-rug/curly_teddy_natural_diff_1k.jpg",
+        "sha256": "3e524df3f6b35bfd87b71ed6a1e2d0c96797e55ec4c1a5b2f7c4332b635a1d79",
+        "bytes": 673494
       }
     },
     {
@@ -75,9 +75,9 @@
       "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_nor_gl_1k.jpg",
       "delivery": {
-        "path": "materials/natural-rug/curly_teddy_natural_nor_gl_512.jpg",
-        "sha256": "a35469b221f35e3dabf418c7176a775d2656d9b16358d568fee6214585c0dfb2",
-        "bytes": 65080
+        "path": "materials/natural-rug/curly_teddy_natural_nor_gl_1k.jpg",
+        "sha256": "a6cea84bddf31c9d4643a25a09c3ec8fa8884e3c3e2d8ac291623e3f702159b8",
+        "bytes": 576152
       }
     },
     {
@@ -87,9 +87,9 @@
       "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
       "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/curly_teddy_natural/curly_teddy_natural_rough_1k.jpg",
       "delivery": {
-        "path": "materials/natural-rug/curly_teddy_natural_rough_512.jpg",
-        "sha256": "b954cd04a85d1137aea9f11cad726b7f8baaf7cde1eaf6c7c3976109c08a55d0",
-        "bytes": 122721
+        "path": "materials/natural-rug/curly_teddy_natural_rough_1k.jpg",
+        "sha256": "b6e3c3eba019ec5d97b690c97fc602891d29de2428b536c0cc8b814e7c23520b",
+        "bytes": 812202
       }
     }
   ],

@@ -47,7 +47,7 @@ ASSETS: dict[str, dict[str, Any]] = {
         "source_page": "https://polyhaven.com/a/modern_coffee_table_01",
         "author": "Amin",
         "entry": "modern_coffee_table_01_1k.gltf",
-        "max_texture_size": 512,
+        "max_texture_size": 1024,
         "files": {
             "modern_coffee_table_01_1k.gltf": (2771, "f1c079ab5bc307630258cf3b40910511", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_coffee_table_01/modern_coffee_table_01_1k.gltf"),
             "modern_coffee_table_01.bin": (154864, "6e8f65bff935af308eab9eff062f6daa", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_coffee_table_01/modern_coffee_table_01.bin"),
@@ -62,7 +62,7 @@ ASSETS: dict[str, dict[str, Any]] = {
         "source_page": "https://polyhaven.com/a/modern_wooden_cabinet",
         "author": "Patrik Pangerl",
         "entry": "modern_wooden_cabinet_1k.gltf",
-        "max_texture_size": 512,
+        "max_texture_size": 1024,
         "files": {
             "modern_wooden_cabinet_1k.gltf": (10960, "623406579e948eb75ff52ec1498085c8", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/modern_wooden_cabinet/modern_wooden_cabinet_1k.gltf"),
             "modern_wooden_cabinet.bin": (1170136, "0a619e6311e6b04b92e9f226f3d0978d", "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_wooden_cabinet/modern_wooden_cabinet.bin"),

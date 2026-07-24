@@ -8,6 +8,6 @@ the frozen files under `/render-assets`. The runtime never calls the Poly Haven 
 - `quality`: 1920×1080 Cycles, Metal preferred, adaptive sampling, denoising, HDRI and wood-floor
   PBR maps, with overview, living-room and bedroom views.
 
-The HDRI and wood floor are committed as 1K CC0 snapshots. The natural rug source is also pinned at
-1K, then resized to a 512 px realtime delivery file; both its original download URLs and optimized
-file hashes remain in the catalog for auditability.
+The HDRI, wood floor, and natural rug are committed as audited 1K CC0 snapshots. Their original
+download URLs and exact delivery hashes remain in the catalog; the realtime Viewer uses 16×
+anisotropic filtering for the warm-minimal floor and rug.

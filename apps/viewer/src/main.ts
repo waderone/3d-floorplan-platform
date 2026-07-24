@@ -832,6 +832,7 @@ async function loadCatalogModel(
   asset: CatalogAsset,
   floorTop: number,
   material: PBRMaterial,
+  highQualityTextures = false,
 ): Promise<boolean> {
   if (asset.kind !== 'model' || !asset.delivery) return false
   try {
@@ -860,6 +861,11 @@ async function loadCatalogModel(
     for (const importedMaterial of assetContainer.materials) {
       if (!(importedMaterial instanceof PBRMaterial)) continue
       importedMaterial.environmentIntensity = 0.92
+      if (highQualityTextures) {
+        for (const texture of importedMaterial.getActiveTextures()) {
+          if (texture instanceof Texture) texture.anisotropicFilteringLevel = 16
+        }
+      }
       if (
         asset.id === 'project-warm-minimal-bathroom' &&
         importedMaterial.name.includes('silvered-mirror')
@@ -912,20 +918,21 @@ async function applyStyle(
   const accent = materials.accent
   if (style.id === 'warm-minimal' && accent) {
     const rugAlbedo = new Texture(
-      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_diff_512.jpg'),
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_diff_1k.jpg'),
       scene,
     )
     const rugNormal = new Texture(
-      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_nor_gl_512.jpg'),
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_nor_gl_1k.jpg'),
       scene,
     )
     const rugRoughness = new Texture(
-      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_rough_512.jpg'),
+      apiUrl('/render-assets/materials/natural-rug/curly_teddy_natural_rough_1k.jpg'),
       scene,
     )
     for (const texture of [rugAlbedo, rugNormal, rugRoughness]) {
       texture.uScale = 10
       texture.vScale = 8
+      texture.anisotropicFilteringLevel = 16
       styledTextures.push(texture)
     }
     rugNormal.level = 0.55
@@ -979,6 +986,7 @@ async function applyStyle(
     for (const texture of [albedo, normal, roughness]) {
       texture.uScale = floorWidth / 1.7
       texture.vScale = floorDepth / 1.7
+      texture.anisotropicFilteringLevel = 16
       styledTextures.push(texture)
     }
     normal.level = 0.42
@@ -1000,6 +1008,9 @@ async function applyStyle(
   addOpeningClearanceGuides(layout, bounds.minimum.y)
 
   const assets = new Map(catalog.assets.map((asset) => [asset.id, asset]))
+  const livingRoomIds = new Set(
+    layout.rooms.filter((room) => room.roomType === 'living').map((room) => room.id),
+  )
   let models = 0
   let fallbacks = 0
   await Promise.all(
@@ -1007,7 +1018,13 @@ async function applyStyle(
       const asset = assets.get(placement.assetId)
       if (!asset) throw new Error(`自动布局引用了不存在的资产：${placement.assetId}`)
       const material = materials[placement.role] ?? materials[asset.fallback.materialRole] ?? architecture
-      const loaded = await loadCatalogModel(placement, asset, bounds.minimum.y, material)
+      const loaded = await loadCatalogModel(
+        placement,
+        asset,
+        bounds.minimum.y,
+        material,
+        warmMinimal && livingRoomIds.has(placement.roomId),
+      )
       if (loaded) {
         models += 1
         return

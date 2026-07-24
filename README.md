@@ -84,6 +84,7 @@
 - [客厅视觉焦点与近景构图](docs/adr/0025-living-room-focal-composition.md)
 - [卧室、厨房与卫生间真实感对齐](docs/adr/0026-private-room-realism-parity.md)
 - [商业级实时卧室质量标杆](docs/adr/0027-commercial-bedroom-benchmark.md)
+- [高端移动端暖木客厅材质标杆](docs/adr/0028-high-end-living-materials.md)
 
 ## 仓库结构
 

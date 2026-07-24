@@ -6,13 +6,14 @@ cross-reference and on-disk SHA-256 validation. Model files are normalized to me
 centered on the floor, and delivered as GLB. A model load failure must use the catalog's
 explicit procedural fallback.
 
-Catalog v8 supports multiple audited sources, kitchen/bathroom room recipes, living-room focal
+Catalog v9 supports multiple audited sources, kitchen/bathroom room recipes, living-room focal
 fixtures, and explicit model material handling. `replace`
 uses the selected style role, `tint` keeps embedded PBR textures while multiplying the style
 color, and `preserve` keeps the authored materials. The starter set retains Kenney's tiny CC0
 fallbacks and adds fixed Poly Haven 1K glTF snapshots for the sofa, coffee table, wooden cabinet,
-pendant, plants, wall art and ceramic decor. The larger source textures are deterministically
-reduced to 512 px for realtime delivery. Every source and local license notice remains part of
+pendant, plants, wall art and ceramic decor. The living-room sofa, coffee table and wooden cabinet
+retain their authored 1K PBR textures for high-end client demonstrations; secondary assets remain
+deterministically reduced where appropriate. Every source and local license notice remains part of
 startup validation.
 
 The commercial bedroom benchmark replaces the former box-built bed with a 23-part upholstered
@@ -27,7 +28,8 @@ toilet/shower suite, a sculptural planter, and a stone-topped bedside table with
 The v2 kitchen includes an oven, hood, sink, hob, worktop props, and cabinet lighting; the v2
 bathroom includes framed mirror lighting, double-sided vanity details, shower controls, towel rail,
 toilet flush, and shower tray. All four are committed as CC0 GLBs with fixed generator and delivery
-hashes; the complete model catalog is 4,565,028 bytes and remains below the 5 MiB mobile budget.
+hashes; the complete model catalog is 7,279,848 bytes and remains below the 8 MiB high-end mobile
+demonstration budget.
 The project-authored living-room focal generator adds a slim television and a brass/linen floor
 lamp. Both use preserved PBR materials, fixed hashes, and explicit recipe sizing so the client
 close-up stays compositionally balanced.
