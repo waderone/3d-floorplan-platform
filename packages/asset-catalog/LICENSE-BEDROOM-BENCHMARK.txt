@@ -1,0 +1,10 @@
+Commercial bedroom benchmark asset notice
+
+The bed geometry and deterministic Blender generator are dedicated to the public
+domain under CC0-1.0 by the 3D Floorplan Platform contributors.
+
+The embedded Cotton Jersey PBR texture is distributed by Poly Haven under
+CC0-1.0. Photography: colormass. Processing: Rico Cilliers.
+
+Source page: https://polyhaven.com/a/cotton_jersey
+License: https://polyhaven.com/license

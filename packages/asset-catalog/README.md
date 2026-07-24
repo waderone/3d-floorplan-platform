@@ -6,7 +6,7 @@ cross-reference and on-disk SHA-256 validation. Model files are normalized to me
 centered on the floor, and delivered as GLB. A model load failure must use the catalog's
 explicit procedural fallback.
 
-Catalog v7 supports multiple audited sources, kitchen/bathroom room recipes, living-room focal
+Catalog v8 supports multiple audited sources, kitchen/bathroom room recipes, living-room focal
 fixtures, and explicit model material handling. `replace`
 uses the selected style role, `tint` keeps embedded PBR textures while multiplying the style
 color, and `preserve` keeps the authored materials. The starter set retains Kenney's tiny CC0
@@ -15,12 +15,19 @@ pendant, plants, wall art and ceramic decor. The larger source textures are dete
 reduced to 512 px for realtime delivery. Every source and local license notice remains part of
 startup validation.
 
+The commercial bedroom benchmark replaces the former box-built bed with a 23-part upholstered
+bed set: a sculpted duvet, folded throw, four pillows, lumbar cushion, channel headboard and
+embedded 512 px Cotton Jersey diffuse/normal/roughness textures. A separate 29,860-byte relief
+art asset provides a reusable wall focal point. Both generators quantize modifier output to a
+binary-exact grid so two independent Blender runs produce identical GLBs. The bed uses `tint`,
+preserving its fabric maps while responding to the selected style role.
+
 The project-authored interior fixture generator adds an oak kitchen suite, a bathroom vanity/
 toilet/shower suite, a sculptural planter, and a stone-topped bedside table with a linen-shade lamp.
 The v2 kitchen includes an oven, hood, sink, hob, worktop props, and cabinet lighting; the v2
 bathroom includes framed mirror lighting, double-sided vanity details, shower controls, towel rail,
 toilet flush, and shower tray. All four are committed as CC0 GLBs with fixed generator and delivery
-hashes; the complete model catalog is 3,925,608 bytes and remains below the 5 MiB mobile budget.
+hashes; the complete model catalog is 4,565,028 bytes and remains below the 5 MiB mobile budget.
 The project-authored living-room focal generator adds a slim television and a brass/linen floor
 lamp. Both use preserved PBR materials, fixed hashes, and explicit recipe sizing so the client
 close-up stays compositionally balanced.
@@ -59,9 +66,18 @@ PYTHONHASHSEED=0 blender --background --factory-startup --disable-autoexec --pyt
   --report /tmp/project-modern-bed-report.json
 ```
 
-The generator exports triangle-only organic meshes, omits unused texture coordinates, and enables
-Meshopt delivery compression. Two independent runs with the fixed hash seed must match the catalog
-byte count and SHA-256 exactly.
+The generator downloads three integrity-pinned Cotton Jersey maps from Poly Haven, embeds
+deterministically scaled 512 px textures, and exports quantized organic cloth meshes. Two
+independent runs with the fixed hash seed must match the catalog byte count and SHA-256 exactly.
+
+Regenerate the project-original CC0 bedroom relief art:
+
+```bash
+PYTHONHASHSEED=0 blender --background --factory-startup --disable-autoexec --python-exit-code 1 \
+  --python tools/assets/generate_bedroom_wall_art.py -- \
+  --output packages/asset-catalog/models/project-warm-minimal-bedroom-art.glb \
+  --report /tmp/project-bedroom-art-report.json
+```
 
 Regenerate the project-original interior fixtures one asset at a time:
 

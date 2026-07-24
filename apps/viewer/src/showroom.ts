@@ -122,7 +122,7 @@ export function roomDetailCameraPreset(
   const frontZ = Math.cos(rotation)
   const roomPreset = roomCameraPreset(room)
   const radiusByType = {
-    bedroom: Math.min(3.35, Math.max(3.0, roomPreset.radius * 0.84)),
+    bedroom: Math.min(4.1, Math.max(3.8, roomPreset.radius)),
     kitchen: Math.min(3.25, Math.max(2.9, roomPreset.radius * 0.9)),
     bathroom: Math.min(2.9, Math.max(2.55, roomPreset.radius * 0.82)),
   } as const

@@ -174,6 +174,7 @@ def test_reviewed_compact_bedroom_uses_core_furnishing_variant() -> None:
         "bedroom-nightstand-west",
         "bedroom-rug",
         "bedroom-pendant",
+        "bedroom-art",
     }
     for name, asset_id in (
         ("厨房", "project-warm-minimal-kitchen"),

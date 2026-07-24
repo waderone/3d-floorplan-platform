@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 7,
+  "version": 8,
   "mobileBudgetBytes": 5242880,
   "sources": [
     {
@@ -110,14 +110,29 @@
       }
     },
     {
-      "id": "project-modern-upholstered-bed-v1",
-      "name": "Project Modern Upholstered Bed",
-      "siteVersion": "2026-07-21",
-      "embeddedVersion": "modern-upholstered-bed-v1",
-      "author": "3D Floorplan Platform contributors",
+      "id": "project-modern-upholstered-bed-v2",
+      "name": "Project Commercial Bedroom Bed Set",
+      "siteVersion": "2026-07-24",
+      "embeddedVersion": "modern-upholstered-bed-v2-512-pbr",
+      "author": "3D Floorplan Platform contributors; cotton texture by colormass / Rico Cilliers",
       "sourceUrl": "https://github.com/waderone/3d-floorplan-platform/blob/main/tools/assets/generate_modern_bed.py",
       "downloadUrl": "https://raw.githubusercontent.com/waderone/3d-floorplan-platform/main/tools/assets/generate_modern_bed.py",
-      "sha256": "eb6d2f47f0f3cdc7f1fc9b344a5b1815e458e352fd364ed21475a862753e7509",
+      "sha256": "abda94a723a0db87703676679a4d44ffe801bab6ce912d814eff364e229a686a",
+      "license": {
+        "spdx": "CC0-1.0",
+        "url": "https://polyhaven.com/license",
+        "localNotice": "LICENSE-BEDROOM-BENCHMARK.txt"
+      }
+    },
+    {
+      "id": "project-warm-minimal-bedroom-art-v1",
+      "name": "Project Warm Minimal Bedroom Relief Art",
+      "siteVersion": "2026-07-24",
+      "embeddedVersion": "warm-minimal-bedroom-art-v1",
+      "author": "3D Floorplan Platform contributors",
+      "sourceUrl": "https://github.com/waderone/3d-floorplan-platform/blob/main/tools/assets/generate_bedroom_wall_art.py",
+      "downloadUrl": "https://raw.githubusercontent.com/waderone/3d-floorplan-platform/main/tools/assets/generate_bedroom_wall_art.py",
+      "sha256": "5f0bf966023fdc3f3221e3b2907b97b800897eda4e6f277961e995257f960acf",
       "license": {
         "spdx": "CC0-1.0",
         "url": "https://creativecommons.org/publicdomain/zero/1.0/",
@@ -351,17 +366,33 @@
       "id": "project-modern-upholstered-bed",
       "kind": "model",
       "roomTypes": ["bedroom"],
-      "sourceId": "project-modern-upholstered-bed-v1",
+      "sourceId": "project-modern-upholstered-bed-v2",
       "sourceEntry": "tools/assets/generate_modern_bed.py",
-      "sourceSha256": "eb6d2f47f0f3cdc7f1fc9b344a5b1815e458e352fd364ed21475a862753e7509",
-      "canonicalSize": [2.1, 1.38, 2.23],
-      "materialMode": "preserve",
+      "sourceSha256": "abda94a723a0db87703676679a4d44ffe801bab6ce912d814eff364e229a686a",
+      "canonicalSize": [2.100098, 1.380195, 2.225039],
+      "materialMode": "tint",
       "delivery": {
         "url": "/catalog-assets/models/project-modern-upholstered-bed.glb",
-        "sha256": "2cc8b6fa65e11013c86e2234feb5303c5ae5004ddba9ea5ab68967a353d04432",
-        "bytes": 109024
+        "sha256": "a2f8a081326194c6e3f222811ba02d5480920f5bb3970691846e5cf7efe3748d",
+        "bytes": 718584
       },
       "fallback": {"kind": "box", "materialRole": "fabric"}
+    },
+    {
+      "id": "project-warm-minimal-bedroom-art",
+      "kind": "model",
+      "roomTypes": ["bedroom"],
+      "sourceId": "project-warm-minimal-bedroom-art-v1",
+      "sourceEntry": "tools/assets/generate_bedroom_wall_art.py",
+      "sourceSha256": "5f0bf966023fdc3f3221e3b2907b97b800897eda4e6f277961e995257f960acf",
+      "canonicalSize": [1.379883, 0.828922, 0.172272],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/project-warm-minimal-bedroom-art.glb",
+        "sha256": "85e815f3badba24eb2fc56517053b330217bc358340fd5cd99f904a6ea72269b",
+        "bytes": 29860
+      },
+      "fallback": {"kind": "box", "materialRole": "accent"}
     },
     {
       "id": "polyhaven-modern-ceiling-lamp-01",
@@ -511,11 +542,12 @@
       {"id": "dining-chair-west", "itemId": "dining-chair-west", "assetId": "kenney-dining-chair", "role": "wood", "collisionMode": "solid", "position": [-1.25, 0.47, 0], "rotationYDegrees": 90}
     ],
     "bedroom": [
-      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "project-modern-upholstered-bed", "role": "fabric", "collisionMode": "solid", "position": [0, 0.63, 0.4], "size": [1.92, 1.26, 2.04], "rotationYDegrees": 0},
+      {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "project-modern-upholstered-bed", "role": "fabric", "collisionMode": "solid", "position": [0, 0.63, 0.4], "size": [1.92, 1.26, 2.04], "rotationYDegrees": 180},
       {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-warm-minimal-bedside-table", "role": "wood", "collisionMode": "solid", "position": [1.4, 0.48, 0.45], "size": [0.46, 0.96, 0.44], "rotationYDegrees": 0},
       {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-warm-minimal-bedside-table", "role": "wood", "collisionMode": "solid", "position": [-1.4, 0.48, 0.45], "size": [0.46, 0.96, 0.44], "rotationYDegrees": 0},
       {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0},
-      {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.3], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
+      {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [-1.25, 2.35, 0.4], "size": [0.28, 0.62, 0.28], "rotationYDegrees": 0},
+      {"id": "bedroom-art", "itemId": "bedroom-art", "assetId": "project-warm-minimal-bedroom-art", "role": "accent", "collisionMode": "surface", "position": [0, 1.8, 1.34], "size": [1.1, 0.66, 0.08], "rotationYDegrees": 0}
     ],
     "kitchen": [
       {"id": "kitchen-suite", "itemId": "kitchen-suite", "assetId": "project-warm-minimal-kitchen", "role": "wood", "collisionMode": "solid", "position": [0, 1.0, 0], "size": [1.72, 2.0, 0.62], "rotationYDegrees": 90}

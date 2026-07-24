@@ -129,7 +129,7 @@ test('builds front-facing detail cameras for bedroom kitchen and bathroom fixtur
   assert.deepEqual(bedroom.target, [8, 0.82, 2.18])
   assert.equal(bedroom.alpha, Math.PI / 2)
   assert.equal(bedroom.beta, Math.PI * 0.49)
-  assert.ok(bedroom.radius >= 3 && bedroom.radius <= 3.35)
+  assert.ok(bedroom.radius >= 3.8 && bedroom.radius <= 4.1)
 
   const kitchen = roomDetailCameraPreset(rooms[4], [
     { itemId: 'kitchen-suite', position: [3.5, 1, 5], rotationYDegrees: 90 },

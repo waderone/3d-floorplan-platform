@@ -24,7 +24,8 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
         "polyhaven-potted-plant-04-1k",
         "polyhaven-hanging-picture-frame-01-1k",
         "polyhaven-ceramic-vase-01-1k",
-        "project-modern-upholstered-bed-v1",
+        "project-modern-upholstered-bed-v2",
+        "project-warm-minimal-bedroom-art-v1",
         "polyhaven-modern-ceiling-lamp-01-1k",
         "project-interior-fixtures-v2",
         "project-living-focal-fixtures-v1",
@@ -36,14 +37,15 @@ def test_asset_catalog_is_audited_and_within_mobile_budget() -> None:
     model_bytes = sum(
         asset.delivery.bytes for asset in catalog.manifest.assets if asset.delivery is not None
     )
-    assert model_bytes == 3_925_608
+    assert model_bytes == 4_565_028
     assert model_bytes < catalog.manifest.mobile_budget_bytes
     assert catalog.assets["polyhaven-sofa-01"].material_mode == "preserve"
     assert catalog.assets["polyhaven-modern-coffee-table-01"].material_mode == "preserve"
     assert catalog.assets["polyhaven-modern-wooden-cabinet"].material_mode == "preserve"
     assert catalog.assets["polyhaven-hanging-picture-frame-01"].material_mode == "preserve"
     assert catalog.assets["polyhaven-modern-ceiling-lamp-01"].material_mode == "preserve"
-    assert catalog.assets["project-modern-upholstered-bed"].material_mode == "preserve"
+    assert catalog.assets["project-modern-upholstered-bed"].material_mode == "tint"
+    assert catalog.assets["project-warm-minimal-bedroom-art"].material_mode == "preserve"
     assert catalog.assets["project-warm-minimal-kitchen"].material_mode == "preserve"
     assert catalog.assets["project-warm-minimal-bathroom"].material_mode == "preserve"
     assert catalog.assets["project-warm-minimal-bedside-table"].material_mode == "preserve"
