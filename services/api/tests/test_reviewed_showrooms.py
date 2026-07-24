@@ -169,7 +169,12 @@ def test_reviewed_compact_bedroom_uses_core_furnishing_variant() -> None:
     }
 
     assert bedroom.id in layout.furnished_room_ids
-    assert item_ids == {"bedroom-bed", "bedroom-rug", "bedroom-pendant"}
+    assert item_ids == {
+        "bedroom-bed",
+        "bedroom-nightstand-west",
+        "bedroom-rug",
+        "bedroom-pendant",
+    }
     for name, asset_id in (
         ("厨房", "project-warm-minimal-kitchen"),
         ("卫生间", "project-warm-minimal-bathroom"),

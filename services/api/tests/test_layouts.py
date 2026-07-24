@@ -132,10 +132,10 @@ def test_layout_is_deterministic_and_furnishes_three_room_types() -> None:
     assert len(first.placements) == 20
     assert set(first.furnished_room_ids) == {"zone_living", "zone_dining", "zone_bedroom"}
     assert {placement.room_id for placement in first.placements} == set(first.furnished_room_ids)
-    assert first.referenced_asset_bytes == 3_363_072
+    assert first.referenced_asset_bytes == 3_398_416
     assert first.mobile_asset_budget_exceeded is False
     assert first.schema_version == "3.0"
-    assert first.pipeline_version == "multiroom-opening-clearance-layout-v5"
+    assert first.pipeline_version == "multiroom-opening-clearance-layout-v6"
     assert first.opening_clearance_validated is True
     assert first.openings == []
     assert len(first.layout_id) == 64

@@ -4,6 +4,8 @@ import {
   buildRoomViewOptions,
   livingCloseupCameraPreset,
   parseStyleSummaries,
+  roomDetailCameraPreset,
+  responsiveRoomCameraRadius,
   roomCameraPreset,
   searchWithStyle,
   type ShowroomRoom,
@@ -76,6 +78,12 @@ test('parses a unique non-empty style catalog', () => {
   )
 })
 
+test('portrait room cameras pull back enough to keep furniture visible', () => {
+  assert.equal(responsiveRoomCameraRadius(3, 16 / 9), 3)
+  assert.ok(responsiveRoomCameraRadius(3, 390 / 844) > 5.9)
+  assert.equal(responsiveRoomCameraRadius(3, 0.1), 6.75)
+})
+
 test('builds one view for every furnished customer room', () => {
   assert.deepEqual(
     buildRoomViewOptions(rooms, ['living-small', 'living-large', 'bedroom', 'kitchen', 'bathroom']),
@@ -112,4 +120,28 @@ test('builds an eye-level living-room camera from the sofa and focal wall axis',
   assert.ok(preset.alpha > 0 && preset.alpha < Math.PI / 2)
   assert.equal(preset.beta, Math.PI * 0.47)
   assert.equal(livingCloseupCameraPreset([]), null)
+})
+
+test('builds front-facing detail cameras for bedroom kitchen and bathroom fixtures', () => {
+  const bedroom = roomDetailCameraPreset(rooms[2], [
+    { itemId: 'bedroom-bed', position: [8, 0.63, 2], rotationYDegrees: 0 },
+  ])
+  assert.deepEqual(bedroom.target, [8, 0.82, 2.18])
+  assert.equal(bedroom.alpha, Math.PI / 2)
+  assert.equal(bedroom.beta, Math.PI * 0.49)
+  assert.ok(bedroom.radius >= 3 && bedroom.radius <= 3.35)
+
+  const kitchen = roomDetailCameraPreset(rooms[4], [
+    { itemId: 'kitchen-suite', position: [3.5, 1, 5], rotationYDegrees: 90 },
+  ])
+  assert.ok(Math.abs(kitchen.alpha) < 1e-12)
+  assert.ok(kitchen.radius >= 2.9 && kitchen.radius <= 3.25)
+
+  const bathroom = roomDetailCameraPreset(rooms[5], [
+    { itemId: 'bathroom-suite', position: [6, 0.86, 5], rotationYDegrees: 0 },
+  ])
+  assert.equal(bathroom.alpha, Math.PI / 2)
+  assert.deepEqual(bathroom.target, [6, 1.08, 5])
+  assert.equal(bathroom.beta, Math.PI * 0.493)
+  assert.ok(bathroom.radius >= 2.55 && bathroom.radius <= 2.9)
 })

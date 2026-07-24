@@ -33,7 +33,8 @@ import {
   buildRoomViewOptions,
   livingCloseupCameraPreset,
   parseStyleSummaries,
-  roomCameraPreset,
+  responsiveRoomCameraRadius,
+  roomDetailCameraPreset,
   searchWithStyle,
   type RoomViewOption,
   type StyleSummary,
@@ -404,6 +405,18 @@ function setDoorDetailsVisible(visible: boolean): void {
   }
 }
 
+function setFurnitureRoomVisibility(roomId: string | null): void {
+  const apply = (mesh: AbstractMesh): void => {
+    const metadata = mesh.metadata as { showroomRoomId?: unknown } | null
+    if (typeof metadata?.showroomRoomId !== 'string') return
+    mesh.setEnabled(roomId === null || metadata.showroomRoomId === roomId)
+  }
+  for (const mesh of styledMeshes) apply(mesh)
+  for (const container of styledAssetContainers) {
+    for (const mesh of container.meshes) apply(mesh)
+  }
+}
+
 function renderRoomViews(layout: LayoutManifest): void {
   roomViewOptions = buildRoomViewOptions(layout.rooms, layout.furnishedRoomIds)
   roomViews.replaceChildren()
@@ -515,6 +528,73 @@ function registerDetailMesh(mesh: AbstractMesh, material: PBRMaterial, castsShad
   mesh.isPickable = false
   if (castsShadow) shadows.addShadowCaster(mesh, true)
   styledMeshes.push(mesh)
+}
+
+function addRoomSurfaceDetails(layout: LayoutManifest, floorTop: number, style: StylePack): void {
+  if (style.id !== 'warm-minimal') return
+  const kitchenStone = new PBRMaterial('kitchen-stone-floor', scene)
+  kitchenStone.albedoColor = Color3.FromHexString('#A7957E')
+  kitchenStone.metallic = 0
+  kitchenStone.roughness = 0.42
+  kitchenStone.environmentIntensity = 0.86
+  const bathroomStone = new PBRMaterial('bathroom-limestone-floor', scene)
+  bathroomStone.albedoColor = Color3.FromHexString('#C7BBA8')
+  bathroomStone.metallic = 0
+  bathroomStone.roughness = 0.3
+  bathroomStone.environmentIntensity = 0.92
+  const grout = new PBRMaterial('bathroom-grout', scene)
+  grout.albedoColor = Color3.FromHexString('#8E8375')
+  grout.metallic = 0
+  grout.roughness = 0.88
+  styledMaterials.push(kitchenStone, bathroomStone, grout)
+
+  for (const room of layout.rooms) {
+    if (room.roomType !== 'kitchen' && room.roomType !== 'bathroom') continue
+    const xValues = room.polygon.map((point) => point[0])
+    const zValues = room.polygon.map((point) => point[1])
+    const minimumX = Math.min(...xValues) + 0.045
+    const maximumX = Math.max(...xValues) - 0.045
+    const minimumZ = Math.min(...zValues) + 0.045
+    const maximumZ = Math.max(...zValues) - 0.045
+    const width = maximumX - minimumX
+    const depth = maximumZ - minimumZ
+    if (width <= 0.2 || depth <= 0.2) continue
+    const surface = MeshBuilder.CreateBox(
+      `${room.roomType}-surface-${room.id}`,
+      { width, height: 0.025, depth },
+      scene,
+    )
+    surface.position.set(
+      (minimumX + maximumX) / 2,
+      floorTop + 0.0125,
+      (minimumZ + maximumZ) / 2,
+    )
+    registerDetailMesh(
+      surface,
+      room.roomType === 'bathroom' ? bathroomStone : kitchenStone,
+      false,
+    )
+    if (room.roomType !== 'bathroom') continue
+    const tileSize = 0.58
+    for (let x = minimumX + tileSize; x < maximumX - 0.1; x += tileSize) {
+      const line = MeshBuilder.CreateBox(
+        `bathroom-grout-x-${room.id}-${x.toFixed(2)}`,
+        { width: 0.012, height: 0.008, depth },
+        scene,
+      )
+      line.position.set(x, floorTop + 0.029, (minimumZ + maximumZ) / 2)
+      registerDetailMesh(line, grout, false)
+    }
+    for (let z = minimumZ + tileSize; z < maximumZ - 0.1; z += tileSize) {
+      const line = MeshBuilder.CreateBox(
+        `bathroom-grout-z-${room.id}-${z.toFixed(2)}`,
+        { width, height: 0.008, depth: 0.012 },
+        scene,
+      )
+      line.position.set((minimumX + maximumX) / 2, floorTop + 0.029, z)
+      registerDetailMesh(line, grout, false)
+    }
+  }
 }
 
 function addArchitecturalDetails(
@@ -672,11 +752,41 @@ function addArchitecturalDetails(
     )
     light.diffuse = warmLight
     const livingFocus = style.id === 'warm-minimal' && room.roomType === 'living'
+    const detailedRoom = style.id === 'warm-minimal' &&
+      (room.roomType === 'bedroom' || room.roomType === 'kitchen' || room.roomType === 'bathroom')
     light.intensity = livingFocus
       ? (compactDevice ? 0.82 : 1.05)
-      : (compactDevice ? 0.42 : 0.56)
+      : detailedRoom
+        ? (compactDevice ? 0.58 : 0.76)
+        : (compactDevice ? 0.42 : 0.56)
     light.range = Math.max(3.2, Math.sqrt(room.area) * (livingFocus ? 1.35 : 1.55))
     styledLights.push(light)
+
+    let focalItemId: string | undefined
+    if (room.roomType === 'bedroom') focalItemId = 'bedroom-nightstand-west'
+    else if (room.roomType === 'kitchen') focalItemId = 'kitchen-suite'
+    else if (room.roomType === 'bathroom') focalItemId = 'bathroom-suite'
+    const focal = focalItemId
+      ? layout.placements.find(
+          (placement) => placement.roomId === room.id && placement.itemId === focalItemId,
+        )
+      : undefined
+    if (!focal || style.id !== 'warm-minimal') continue
+    const accentLight = new PointLight(
+      `room-accent-light-${room.id}`,
+      new Vector3(
+        focal.position[0],
+        floorTop + (room.roomType === 'bedroom' ? 1.15 : 1.55),
+        focal.position[2] - 0.08,
+      ),
+      scene,
+    )
+    accentLight.diffuse = room.roomType === 'bathroom'
+      ? Color3.FromHexString('#FFF0D7')
+      : Color3.FromHexString('#FFB86A')
+    accentLight.intensity = compactDevice ? 0.26 : 0.38
+    accentLight.range = room.roomType === 'bedroom' ? 2.2 : 2.6
+    styledLights.push(accentLight)
   }
 }
 
@@ -710,6 +820,7 @@ function createFallback(
   }
   mesh.position.set(placement.position[0], floorTop + placement.position[1], placement.position[2])
   mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
+  mesh.metadata = { ...(mesh.metadata ?? {}), showroomRoomId: placement.roomId }
   mesh.material = material
   mesh.receiveShadows = true
   shadows.addShadowCaster(mesh, true)
@@ -724,7 +835,9 @@ async function loadCatalogModel(
 ): Promise<boolean> {
   if (asset.kind !== 'model' || !asset.delivery) return false
   try {
-    const assetContainer = await LoadAssetContainerAsync(apiUrl(asset.delivery.url), scene)
+    const modelUrl = new URL(apiUrl(asset.delivery.url), window.location.origin)
+    modelUrl.searchParams.set('sha256', asset.delivery.sha256)
+    const assetContainer = await LoadAssetContainerAsync(modelUrl.toString(), scene)
     const roots = assetContainer.meshes.filter((mesh) => mesh.parent === null)
     if (roots.length === 0) throw new Error(`资产 ${asset.id} 没有根节点`)
     const scale = placement.size.map((value, index) => value / asset.canonicalSize[index])
@@ -738,13 +851,25 @@ async function loadCatalogModel(
       rootMesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
     }
     for (const mesh of assetContainer.meshes) {
+      mesh.metadata = { ...(mesh.metadata ?? {}), showroomRoomId: placement.roomId }
       if (mesh.getTotalVertices() === 0) continue
       if (asset.materialMode === 'replace') mesh.material = material
       mesh.receiveShadows = true
       shadows.addShadowCaster(mesh, true)
     }
     for (const importedMaterial of assetContainer.materials) {
-      if (importedMaterial instanceof PBRMaterial) importedMaterial.environmentIntensity = 0.92
+      if (!(importedMaterial instanceof PBRMaterial)) continue
+      importedMaterial.environmentIntensity = 0.92
+      if (
+        asset.id === 'project-warm-minimal-bathroom' &&
+        importedMaterial.name.includes('silvered-mirror')
+      ) {
+        importedMaterial.albedoColor = Color3.FromHexString('#71858A')
+        importedMaterial.emissiveColor = Color3.FromHexString('#162226')
+        importedMaterial.metallic = 0.18
+        importedMaterial.roughness = 0.16
+        importedMaterial.environmentIntensity = 1.2
+      }
     }
     if (asset.materialMode === 'tint') {
       for (const importedMaterial of assetContainer.materials) {
@@ -870,6 +995,7 @@ async function applyStyle(
   floor.material = floorMaterial
   floor.receiveShadows = true
   styledMeshes.push(floor)
+  addRoomSurfaceDetails(layout, bounds.minimum.y, style)
   addArchitecturalDetails(layout, bounds.minimum.y, materials, style)
   addOpeningClearanceGuides(layout, bounds.minimum.y)
 
@@ -1036,6 +1162,7 @@ function applyView(viewId: string): void {
   if (viewId === 'top') {
     setArchitectureOpacity(1)
     setDoorDetailsVisible(true)
+    setFurnitureRoomVisibility(null)
     camera.alpha = -Math.PI / 2
     camera.beta = 0.04
     camera.setTarget(defaultTarget)
@@ -1043,6 +1170,7 @@ function applyView(viewId: string): void {
   } else if (viewId === 'whole') {
     setArchitectureOpacity(1)
     setDoorDetailsVisible(true)
+    setFurnitureRoomVisibility(null)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
     camera.setTarget(defaultTarget)
@@ -1057,6 +1185,7 @@ function applyView(viewId: string): void {
       if (!room || room.roomType !== 'living' || !preset) return
       setArchitectureOpacity(0.34)
       setDoorDetailsVisible(false)
+      setFurnitureRoomVisibility(closeupRoomId)
       camera.alpha = preset.alpha
       camera.beta = preset.beta
       camera.setTarget(Vector3.FromArray(preset.target))
@@ -1068,18 +1197,18 @@ function applyView(viewId: string): void {
     const option = roomViewOptions.find((candidate) => candidate.id === viewId)
     const room = option && currentLayout.rooms.find((candidate) => candidate.id === option.roomId)
     if (!room) return
-    setArchitectureOpacity(0.28)
+    setArchitectureOpacity(option.roomType === 'bathroom' ? 0.12 : 0.2)
     setDoorDetailsVisible(false)
-    const preset = roomCameraPreset(room)
-    const inwardX = defaultTarget.x - room.centroid[0]
-    const inwardZ = defaultTarget.z - room.centroid[1]
-    camera.alpha = Math.hypot(inwardX, inwardZ) > 0.4
-      ? Math.atan2(inwardZ, inwardX)
-      : perspectiveAlpha
-    camera.beta = Math.PI * 0.46
+    setFurnitureRoomVisibility(room.id)
+    const preset = roomDetailCameraPreset(
+      room,
+      currentLayout.placements.filter((placement) => placement.roomId === room.id),
+    )
+    camera.alpha = preset.alpha
+    camera.beta = preset.beta
     camera.setTarget(Vector3.FromArray(preset.target))
     const aspect = engine.getRenderWidth() / Math.max(1, engine.getRenderHeight())
-    camera.radius = preset.radius * Math.max(1, 0.72 / aspect)
+    camera.radius = responsiveRoomCameraRadius(preset.radius, aspect)
   }
   setActiveView(viewId)
 }

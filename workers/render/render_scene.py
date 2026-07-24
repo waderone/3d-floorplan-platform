@@ -69,7 +69,7 @@ def load_layout(path: Path, style: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("layout manifest is invalid")
     if (
         value["schemaVersion"] != "3.0"
-        or value["pipelineVersion"] != "multiroom-opening-clearance-layout-v5"
+        or value["pipelineVersion"] != "multiroom-opening-clearance-layout-v6"
         or value["openingClearanceValidated"] is not True
         or not isinstance(value["openings"], list)
         or not isinstance(value["ignoredOpeningIds"], list)

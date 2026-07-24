@@ -31,6 +31,10 @@ export interface LivingCameraPlacement {
   position: [number, number, number]
 }
 
+export interface RoomCameraPlacement extends LivingCameraPlacement {
+  rotationYDegrees: number
+}
+
 export interface LivingCloseupCameraPreset extends RoomCameraPreset {
   alpha: number
   beta: number
@@ -100,6 +104,48 @@ export function roomCameraPreset(room: ShowroomRoom): RoomCameraPreset {
     target: [room.centroid[0], 0.95, room.centroid[1]],
     radius: Math.max(3.2, Math.hypot(width, depth) * 0.67),
   }
+}
+
+export function roomDetailCameraPreset(
+  room: ShowroomRoom,
+  placements: RoomCameraPlacement[],
+): LivingCloseupCameraPreset {
+  let focalItemId: string | undefined
+  if (room.roomType === 'bedroom') focalItemId = 'bedroom-bed'
+  else if (room.roomType === 'kitchen') focalItemId = 'kitchen-suite'
+  else if (room.roomType === 'bathroom') focalItemId = 'bathroom-suite'
+  const focal = focalItemId
+    ? placements.find((placement) => placement.itemId === focalItemId)
+    : undefined
+  const rotation = ((focal?.rotationYDegrees ?? 0) * Math.PI) / 180
+  const frontX = Math.sin(rotation)
+  const frontZ = Math.cos(rotation)
+  const roomPreset = roomCameraPreset(room)
+  const radiusByType = {
+    bedroom: Math.min(3.35, Math.max(3.0, roomPreset.radius * 0.84)),
+    kitchen: Math.min(3.25, Math.max(2.9, roomPreset.radius * 0.9)),
+    bathroom: Math.min(2.9, Math.max(2.55, roomPreset.radius * 0.82)),
+  } as const
+  return {
+    target: [
+      focal?.position[0] ?? roomPreset.target[0],
+      room.roomType === 'bedroom' ? 0.82 : room.roomType === 'bathroom' ? 1.08 : 0.98,
+      (focal?.position[2] ?? roomPreset.target[2]) + (room.roomType === 'bedroom' ? 0.18 : 0),
+    ],
+    radius: radiusByType[room.roomType as keyof typeof radiusByType] ?? roomPreset.radius,
+    alpha: room.roomType === 'bedroom' || room.roomType === 'bathroom'
+      ? Math.atan2(frontZ, -frontX)
+      : Math.atan2(-frontZ, frontX),
+    beta: room.roomType === 'bathroom'
+      ? Math.PI * 0.493
+      : room.roomType === 'bedroom'
+        ? Math.PI * 0.49
+        : Math.PI * 0.475,
+  }
+}
+
+export function responsiveRoomCameraRadius(radius: number, aspect: number): number {
+  return radius * Math.min(2.25, Math.max(1, 0.92 / Math.max(0.01, aspect)))
 }
 
 export function livingCloseupCameraPreset(

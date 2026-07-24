@@ -12,7 +12,7 @@ from .assets import AssetCatalog, RoomType
 from .styles import StylePack, StylePlacement
 
 
-LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v5"
+LAYOUT_PIPELINE_VERSION = "multiroom-opening-clearance-layout-v6"
 Point2D = tuple[float, float]
 
 
@@ -76,7 +76,7 @@ class LayoutManifest(BaseModel):
 
     schema_version: Literal["3.0"] = Field(alias="schemaVersion")
     layout_id: str = Field(alias="layoutId", pattern=r"^[0-9a-f]{64}$")
-    pipeline_version: Literal["multiroom-opening-clearance-layout-v5"] = Field(
+    pipeline_version: Literal["multiroom-opening-clearance-layout-v6"] = Field(
         alias="pipelineVersion"
     )
     project_id: str = Field(alias="projectId")
@@ -703,6 +703,16 @@ def _template_variants(
         return variants
     compact: list[StylePlacement] = []
     for placement in template:
+        if placement.item_id == "bedroom-nightstand-west":
+            compact.append(
+                placement.model_copy(
+                    update={
+                        "position": (-1.215, 0.48, 0.45),
+                        "size": (0.46, 0.96, 0.44),
+                    }
+                )
+            )
+            continue
         if placement.collision_mode == "solid" and placement.asset_id not in {
             "kenney-bed-double",
             "project-modern-upholstered-bed",

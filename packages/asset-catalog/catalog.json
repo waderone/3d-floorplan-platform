@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "id": "starter-furniture",
-  "version": 6,
+  "version": 7,
   "mobileBudgetBytes": 5242880,
   "sources": [
     {
@@ -140,14 +140,14 @@
       }
     },
     {
-      "id": "project-interior-fixtures-v1",
+      "id": "project-interior-fixtures-v2",
       "name": "Project Warm Minimal Interior Fixtures",
-      "siteVersion": "2026-07-22",
-      "embeddedVersion": "interior-fixtures-v1",
+      "siteVersion": "2026-07-24",
+      "embeddedVersion": "interior-fixtures-v2",
       "author": "3D Floorplan Platform contributors",
       "sourceUrl": "https://github.com/waderone/3d-floorplan-platform/blob/main/tools/assets/generate_interior_fixtures.py",
       "downloadUrl": "https://raw.githubusercontent.com/waderone/3d-floorplan-platform/main/tools/assets/generate_interior_fixtures.py",
-      "sha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "sha256": "7ba17645a0825b423a82ce1807dfb86d7d08b42125fbcf700e0f7e440eddc8bb",
       "license": {
         "spdx": "CC0-1.0",
         "url": "https://creativecommons.org/publicdomain/zero/1.0/",
@@ -394,25 +394,34 @@
       "fallback": {"kind": "box", "materialRole": "wood"}
     },
     {
-      "id": "project-nightstand",
-      "kind": "procedural",
+      "id": "project-warm-minimal-bedside-table",
+      "kind": "model",
       "roomTypes": ["bedroom"],
-      "canonicalSize": [0.45, 0.6, 0.45],
+      "sourceId": "project-interior-fixtures-v2",
+      "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset bedside-table",
+      "sourceSha256": "7ba17645a0825b423a82ce1807dfb86d7d08b42125fbcf700e0f7e440eddc8bb",
+      "canonicalSize": [0.49, 1.02, 0.469],
+      "materialMode": "preserve",
+      "delivery": {
+        "url": "/catalog-assets/models/project-warm-minimal-bedside-table.glb",
+        "sha256": "cc92b16b56aab86e34d51f4b0aeb33c0b654c387c8bd7a918777ab900bc38d3d",
+        "bytes": 35344
+      },
       "fallback": {"kind": "box", "materialRole": "wood"}
     },
     {
       "id": "project-warm-minimal-kitchen",
       "kind": "model",
       "roomTypes": ["kitchen"],
-      "sourceId": "project-interior-fixtures-v1",
+      "sourceId": "project-interior-fixtures-v2",
       "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset kitchen",
-      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
-      "canonicalSize": [1.9, 2.06, 0.6795],
+      "sourceSha256": "7ba17645a0825b423a82ce1807dfb86d7d08b42125fbcf700e0f7e440eddc8bb",
+      "canonicalSize": [1.9, 2.06, 0.7175],
       "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/project-warm-minimal-kitchen.glb",
-        "sha256": "96d3a14792dda082e30e5735c6336ad48368c3af19f06480060612719191475f",
-        "bytes": 55920
+        "sha256": "bd04bb8d04e2e0f93b44dc65417a6a7f629a4d572f98945c6d9759aca72c9ede",
+        "bytes": 65120
       },
       "fallback": {"kind": "box", "materialRole": "wood"}
     },
@@ -420,15 +429,15 @@
       "id": "project-warm-minimal-bathroom",
       "kind": "model",
       "roomTypes": ["bathroom"],
-      "sourceId": "project-interior-fixtures-v1",
+      "sourceId": "project-interior-fixtures-v2",
       "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset bathroom",
-      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
-      "canonicalSize": [1.5675, 1.845, 0.8875],
+      "sourceSha256": "7ba17645a0825b423a82ce1807dfb86d7d08b42125fbcf700e0f7e440eddc8bb",
+      "canonicalSize": [1.8175, 1.905, 0.8875],
       "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/project-warm-minimal-bathroom.glb",
-        "sha256": "45b4c99de42196139c9526924bacc7dd77b480c336df6c45d80a37e69e9fd5ca",
-        "bytes": 43140
+        "sha256": "a48ea6c8a38775c721eed4181ecea2d1d704f842202c4bef5c71463c34415cf9",
+        "bytes": 71124
       },
       "fallback": {"kind": "box", "materialRole": "ceramic"}
     },
@@ -436,14 +445,14 @@
       "id": "project-sculptural-planter",
       "kind": "model",
       "roomTypes": ["living"],
-      "sourceId": "project-interior-fixtures-v1",
+      "sourceId": "project-interior-fixtures-v2",
       "sourceEntry": "PYTHONHASHSEED=0 tools/assets/generate_interior_fixtures.py --asset planter",
-      "sourceSha256": "2f3fb881a7a744df5d265121465f0cd6b848ad1f1f0acb9b70ab0845886a0d15",
+      "sourceSha256": "7ba17645a0825b423a82ce1807dfb86d7d08b42125fbcf700e0f7e440eddc8bb",
       "canonicalSize": [0.969366, 1.535245, 0.6],
       "materialMode": "preserve",
       "delivery": {
         "url": "/catalog-assets/models/project-sculptural-planter.glb",
-        "sha256": "db733228082f7e342dc132c513dca4aaa0632b770ba93fe8ae7a727d837de732",
+        "sha256": "2045afc62f2bc922d02ac4a483bd5743edec93d2c87a0568e221a587d4170cfe",
         "bytes": 102168
       },
       "fallback": {"kind": "cylinder", "materialRole": "greenery"}
@@ -503,8 +512,8 @@
     ],
     "bedroom": [
       {"id": "bedroom-bed", "itemId": "bedroom-bed", "assetId": "project-modern-upholstered-bed", "role": "fabric", "collisionMode": "solid", "position": [0, 0.63, 0.4], "size": [1.92, 1.26, 2.04], "rotationYDegrees": 0},
-      {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [1.4, 0.3, 0.2], "rotationYDegrees": 0},
-      {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-nightstand", "role": "wood", "collisionMode": "solid", "position": [-1.4, 0.3, 0.2], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-east", "itemId": "bedroom-nightstand-east", "assetId": "project-warm-minimal-bedside-table", "role": "wood", "collisionMode": "solid", "position": [1.4, 0.48, 0.45], "size": [0.46, 0.96, 0.44], "rotationYDegrees": 0},
+      {"id": "bedroom-nightstand-west", "itemId": "bedroom-nightstand-west", "assetId": "project-warm-minimal-bedside-table", "role": "wood", "collisionMode": "solid", "position": [-1.4, 0.48, 0.45], "size": [0.46, 0.96, 0.44], "rotationYDegrees": 0},
       {"id": "bedroom-rug", "itemId": "bedroom-rug", "assetId": "project-rug", "role": "accent", "collisionMode": "surface", "position": [0, 0.025, 0.3], "rotationYDegrees": 0},
       {"id": "bedroom-pendant", "itemId": "bedroom-pendant", "assetId": "polyhaven-modern-ceiling-lamp-01", "role": "ceramic", "collisionMode": "surface", "position": [0, 2.45, 0.3], "size": [0.32, 0.7, 0.32], "rotationYDegrees": 0}
     ],
