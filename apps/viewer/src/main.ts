@@ -27,6 +27,11 @@ import {
   parseBaselineManifest,
   type BaselineManifest,
 } from './baseline'
+import {
+  bundleDataUrl,
+  deliveryAssetUrl,
+  resolveDeliveryConfig,
+} from './delivery'
 import { parseLayoutManifest, type LayoutManifest } from './layout'
 import { parseArtifactManifest, type ArtifactManifest } from './manifest'
 import {
@@ -134,13 +139,29 @@ const baselineProject = element<HTMLInputElement>('#baseline-project')
 const baselineWidth = element<HTMLInputElement>('#baseline-width')
 const baselineFile = element<HTMLInputElement>('#baseline-file')
 
+function metaContent(name: string): string {
+  return document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content ?? ''
+}
+
+const delivery = resolveDeliveryConfig(
+  {
+    dataBase: metaContent('showroom-data-base'),
+    projectId: metaContent('showroom-project-id'),
+    mode: metaContent('showroom-mode'),
+    quality: metaContent('showroom-quality'),
+  },
+  window.location.search,
+)
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-const projectId = new URLSearchParams(window.location.search).get('project') ?? ''
-let currentStyleId = new URLSearchParams(window.location.search).get('style') ?? 'warm-minimal'
+const projectId = delivery.projectId
+let currentStyleId = delivery.initialStyleId
+shell.dataset.presentation = String(delivery.presentationMode)
+shell.dataset.quality = delivery.highQualityMode ? 'high' : 'auto'
 baselineProject.value = `home-${Date.now().toString(36)}`
 const compactDevice = window.matchMedia('(max-width: 700px), (pointer: coarse)').matches
 const engine = new Engine(canvas, true, { adaptToDeviceRatio: true, stencil: true })
-engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / (compactDevice ? 1.25 : 1.6)))
+const renderPixelRatio = delivery.highQualityMode ? 2 : compactDevice ? 1.25 : 1.6
+engine.setHardwareScalingLevel(Math.max(1, window.devicePixelRatio / renderPixelRatio))
 const meshoptDecoderUrl = URL.createObjectURL(
   new Blob([meshoptDecoderSource], { type: 'text/javascript' }),
 )
@@ -151,7 +172,7 @@ scene.clearColor = new Color4(0.91, 0.9, 0.86, 1)
 const environmentTexture = new HDRCubeTexture(
   apiUrl('/render-assets/environment/lebombo_1k.hdr'),
   scene,
-  compactDevice ? 64 : 128,
+  delivery.highQualityMode || !compactDevice ? 128 : 64,
   false,
   true,
   false,
@@ -184,9 +205,11 @@ skyLight.groundColor = new Color3(0.35, 0.4, 0.46)
 const sun = new DirectionalLight('sun', new Vector3(-0.45, -1, 0.35), scene)
 sun.intensity = 1.8
 sun.diffuse = new Color3(1, 0.9, 0.72)
-const shadows = new ShadowGenerator(compactDevice ? 1024 : 2048, sun)
+const shadows = new ShadowGenerator(delivery.highQualityMode || !compactDevice ? 2048 : 1024, sun)
 shadows.useBlurExponentialShadowMap = true
-shadows.blurKernel = compactDevice ? 16 : 28
+shadows.blurKernel = delivery.highQualityMode || !compactDevice ? 28 : 16
+shadows.bias = delivery.highQualityMode ? 0.00035 : 0.0005
+shadows.normalBias = delivery.highQualityMode ? 0.018 : 0.025
 scene.imageProcessingConfiguration.toneMappingEnabled = true
 scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES
 scene.imageProcessingConfiguration.exposure = 1.08
@@ -195,7 +218,7 @@ scene.imageProcessingConfiguration.vignetteEnabled = true
 scene.imageProcessingConfiguration.vignetteWeight = 1.15
 const renderingPipeline = new DefaultRenderingPipeline('showroom-quality', true, scene, [camera])
 renderingPipeline.fxaaEnabled = true
-renderingPipeline.samples = compactDevice ? 1 : 4
+renderingPipeline.samples = delivery.highQualityMode || !compactDevice ? 4 : 1
 renderingPipeline.bloomEnabled = true
 renderingPipeline.bloomThreshold = 0.92
 renderingPipeline.bloomWeight = 0.08
@@ -220,9 +243,11 @@ let styleSummaries: StyleSummary[] = []
 let roomViewOptions: RoomViewOption[] = []
 let switchingStyle = false
 let openingClearancesVisible = false
+const noHiddenItemIds: ReadonlySet<string> = new Set()
+const livingCloseupHiddenItemIds = new Set(['living-television'])
 
 function apiUrl(path: string): string {
-  return `${apiBase}${path}`
+  return deliveryAssetUrl(delivery, apiBase, path)
 }
 
 function formatBytes(bytes: number): string {
@@ -336,14 +361,16 @@ function setReady(
       ? `门窗净空阻断 ${layout.openingBlockedRoomIds.length} 个房间`
       : layout.fallbackReason === 'no-room-fits'
         ? '房间尺寸不足'
-      : layout.fallbackReason === 'no-supported-room'
-        ? '暂无支持的房间类型'
-        : '待补房间边界'
+        : layout.fallbackReason === 'no-supported-room'
+          ? '暂无支持的房间类型'
+          : '待补房间边界'
   qualityStatus.textContent = manifest.mobileBudgetExceeded
     ? '轻量降级模式'
-    : compactDevice
-      ? '移动优化画质'
-      : '实时高画质'
+    : delivery.highQualityMode
+      ? '高端演示画质'
+      : compactDevice
+        ? '移动优化画质'
+        : '实时高画质'
   const furnitureItems = new Set(layout.placements.map((placement) => placement.itemId)).size
   stats.innerHTML = `<span><strong>${layout.rooms.length}</strong> 个空间</span><span><strong>${furnitureItems}</strong> 组家具</span><span><strong>${layout.openings.length}</strong> 个门窗开口</span><span><strong>${assetStats.models}</strong> 真实模型</span>${assetStats.fallbacks ? `<span class="fallback-stat"><strong>${assetStats.fallbacks}</strong> 项回退</span>` : ''}`
   clearancesButton.hidden = layout.openings.length === 0
@@ -405,11 +432,20 @@ function setDoorDetailsVisible(visible: boolean): void {
   }
 }
 
-function setFurnitureRoomVisibility(roomId: string | null): void {
+function setFurnitureRoomVisibility(
+  roomId: string | null,
+  hiddenItemIds: ReadonlySet<string> = noHiddenItemIds,
+): void {
   const apply = (mesh: AbstractMesh): void => {
-    const metadata = mesh.metadata as { showroomRoomId?: unknown } | null
+    const metadata = mesh.metadata as {
+      showroomItemId?: unknown
+      showroomRoomId?: unknown
+    } | null
     if (typeof metadata?.showroomRoomId !== 'string') return
-    mesh.setEnabled(roomId === null || metadata.showroomRoomId === roomId)
+    const roomVisible = roomId === null || metadata.showroomRoomId === roomId
+    const itemVisible =
+      typeof metadata.showroomItemId !== 'string' || !hiddenItemIds.has(metadata.showroomItemId)
+    mesh.setEnabled(roomVisible && itemVisible)
   }
   for (const mesh of styledMeshes) apply(mesh)
   for (const container of styledAssetContainers) {
@@ -436,6 +472,14 @@ function renderRoomViews(layout: LayoutManifest): void {
       roomViews.append(closeup)
     }
   }
+}
+
+function preferredDeliveryView(layout: LayoutManifest): string {
+  if (!delivery.presentationMode) return 'whole'
+  const livingRoom = layout.rooms.find(
+    (room) => room.roomType === 'living' && layout.furnishedRoomIds.includes(room.id),
+  )
+  return livingRoom ? `closeup:${livingRoom.id}` : 'whole'
 }
 
 function frameModel(layout: LayoutManifest): void {
@@ -820,7 +864,11 @@ function createFallback(
   }
   mesh.position.set(placement.position[0], floorTop + placement.position[1], placement.position[2])
   mesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
-  mesh.metadata = { ...(mesh.metadata ?? {}), showroomRoomId: placement.roomId }
+  mesh.metadata = {
+    ...(mesh.metadata ?? {}),
+    showroomItemId: placement.itemId,
+    showroomRoomId: placement.roomId,
+  }
   mesh.material = material
   mesh.receiveShadows = true
   shadows.addShadowCaster(mesh, true)
@@ -852,7 +900,11 @@ async function loadCatalogModel(
       rootMesh.rotation.y = (placement.rotationYDegrees * Math.PI) / 180
     }
     for (const mesh of assetContainer.meshes) {
-      mesh.metadata = { ...(mesh.metadata ?? {}), showroomRoomId: placement.roomId }
+      mesh.metadata = {
+        ...(mesh.metadata ?? {}),
+        showroomItemId: placement.itemId,
+        showroomRoomId: placement.roomId,
+      }
       if (mesh.getTotalVertices() === 0) continue
       if (asset.materialMode === 'replace') mesh.material = material
       mesh.receiveShadows = true
@@ -1065,21 +1117,30 @@ async function applyStyle(
 }
 
 async function getAssetCatalog(): Promise<AssetCatalog> {
-  const response = await fetch(apiUrl('/api/asset-catalog'), { cache: 'no-store' })
+  const response = await fetch(
+    delivery.bundled ? bundleDataUrl(delivery, 'catalog.json') : apiUrl('/api/asset-catalog'),
+    { cache: 'no-store' },
+  )
   if (!response.ok) throw new Error(`资产目录服务请求失败（${response.status}）`)
   return parseAssetCatalog(await response.json())
 }
 
 async function getStyleSummaries(): Promise<StyleSummary[]> {
-  const response = await fetch(apiUrl('/api/styles'), { cache: 'no-store' })
+  const response = await fetch(
+    delivery.bundled ? bundleDataUrl(delivery, 'styles/index.json') : apiUrl('/api/styles'),
+    { cache: 'no-store' },
+  )
   if (!response.ok) throw new Error(`风格目录服务请求失败（${response.status}）`)
   return parseStyleSummaries(await response.json())
 }
 
 async function getStylePack(styleId: string): Promise<StylePack> {
-  const response = await fetch(apiUrl(`/api/styles/${encodeURIComponent(styleId)}`), {
-    cache: 'no-store',
-  })
+  const response = await fetch(
+    delivery.bundled
+      ? bundleDataUrl(delivery, `styles/${encodeURIComponent(styleId)}.json`)
+      : apiUrl(`/api/styles/${encodeURIComponent(styleId)}`),
+    { cache: 'no-store' },
+  )
   if (response.status === 404) throw new Error('指定的装修风格不存在')
   if (!response.ok) throw new Error(`风格服务请求失败（${response.status}）`)
   return parseStylePack(await response.json())
@@ -1087,9 +1148,11 @@ async function getStylePack(styleId: string): Promise<StylePack> {
 
 async function getLayoutManifest(styleId: string): Promise<LayoutManifest> {
   const response = await fetch(
-    apiUrl(
-      `/api/projects/${encodeURIComponent(projectId)}/layout?styleId=${encodeURIComponent(styleId)}`,
-    ),
+    delivery.bundled
+      ? bundleDataUrl(delivery, `layouts/${encodeURIComponent(styleId)}.json`)
+      : apiUrl(
+          `/api/projects/${encodeURIComponent(projectId)}/layout?styleId=${encodeURIComponent(styleId)}`,
+        ),
     { cache: 'no-store' },
   )
   if (response.status === 404) throw new Error('项目场景或装修风格不存在')
@@ -1098,15 +1161,23 @@ async function getLayoutManifest(styleId: string): Promise<LayoutManifest> {
 }
 
 async function getLatestManifest(): Promise<ArtifactManifest> {
-  const response = await fetch(apiUrl(`/api/projects/${encodeURIComponent(projectId)}/artifacts/latest`), {
-    cache: 'no-store',
-  })
+  const response = await fetch(
+    delivery.bundled
+      ? bundleDataUrl(delivery, 'manifest.json')
+      : apiUrl(`/api/projects/${encodeURIComponent(projectId)}/artifacts/latest`),
+    { cache: 'no-store' },
+  )
   if (response.status === 404) throw new Error('这个项目还没有发布 3D 模型')
   if (!response.ok) throw new Error(`模型服务请求失败（${response.status}）`)
   return parseArtifactManifest(await response.json())
 }
 
 async function waitUntilReady(): Promise<ArtifactManifest> {
+  if (delivery.bundled) {
+    const manifest = await getLatestManifest()
+    if (manifest.status !== 'ready') throw new Error('客户预览包缺少可用的优化模型')
+    return manifest
+  }
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const manifest = await getLatestManifest()
     if (manifest.status === 'failed') throw new Error(manifest.error ?? '模型优化失败')
@@ -1167,8 +1238,8 @@ async function loadModel(): Promise<void> {
     frameModel(layout)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
-    setActiveView('whole')
     setReady(manifest, style, layout, assetStats)
+    applyView(preferredDeliveryView(layout))
   } catch (error) {
     setError(error)
   }
@@ -1200,9 +1271,9 @@ function applyView(viewId: string): void {
         currentLayout.placements.filter((placement) => placement.roomId === closeupRoomId),
       )
       if (!room || room.roomType !== 'living' || !preset) return
-      setArchitectureOpacity(0.34)
+      setArchitectureOpacity(delivery.presentationMode ? 0.04 : 0.2)
       setDoorDetailsVisible(false)
-      setFurnitureRoomVisibility(closeupRoomId)
+      setFurnitureRoomVisibility(closeupRoomId, livingCloseupHiddenItemIds)
       camera.alpha = preset.alpha
       camera.beta = preset.beta
       camera.setTarget(Vector3.FromArray(preset.target))
@@ -1262,9 +1333,9 @@ async function switchStyle(styleId: string): Promise<void> {
     frameModel(layout)
     camera.alpha = perspectiveAlpha
     camera.beta = perspectiveBeta
-    setActiveView('whole')
     window.history.replaceState(null, '', searchWithStyle(window.location.search, currentStyleId))
     setReady(currentManifest, style, layout, assetStats)
+    applyView(preferredDeliveryView(layout))
     setStyleSwitching(false, '已切换')
     window.setTimeout(() => {
       if (!switchingStyle) styleSwitchStatus.textContent = ''

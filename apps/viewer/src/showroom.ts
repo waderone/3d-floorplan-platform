@@ -163,14 +163,16 @@ export function livingCloseupCameraPreset(
   const unitZ = forwardZ / forwardLength
   const lateralX = -unitZ
   const lateralZ = unitX
-  const offsetX = -unitX * 3.3 - lateralX * 0.5
-  const offsetZ = -unitZ * 3.3 - lateralZ * 0.5
+  const targetX = table.position[0] * 0.65 + sofa.position[0] * 0.35
+  const targetZ = table.position[2] * 0.65 + sofa.position[2] * 0.35
+  const offsetX = unitX * 0.9 + lateralX * 2.8
+  const offsetZ = unitZ * 0.9 + lateralZ * 2.8
   return {
-    target: [focal.position[0], 1.05, focal.position[2] + 0.2],
+    target: [targetX, 0.82, targetZ],
     radius: Math.hypot(offsetX, offsetZ),
     // Babylon negates the X component of ArcRotateCamera in right-handed scenes.
     alpha: Math.atan2(offsetZ, -offsetX),
-    beta: Math.PI * 0.47,
+    beta: Math.PI * 0.42,
   }
 }
 

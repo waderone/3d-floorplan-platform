@@ -40,10 +40,16 @@ layout v6 从 Pascal 权威 Door/Window 派生门扇开启区和窗边接近区�
 模型 URL 携带目录 SHA-256，目录内二进制升级后不会命中旧浏览器缓存。竖屏设备会按画布宽高比
 自动拉远房间镜头，保证床、橱柜和洁具主体完整入镜。
 
-实时画质使用 ACES、FXAA、轻量 bloom 和软阴影，桌面使用 4× MSAA/2048 阴影，手机自动降为
-1× MSAA/1024 阴影并限制像素倍率。模型、风格、layout 和目录的 project/revision/version
-不一致会明确失败；单个真实模型加载失败时使用目录声明的程序化回退并显示统计，layout fallback
-则保留建筑预览并提示缺失房间语义或尺寸。
+实时画质使用 ACES、FXAA、轻量 bloom 和软阴影。默认自动档在普通触屏设备上降低像素倍率、
+MSAA、HDR cube 和阴影尺寸；显式 `quality=high` 的演示包使用最高 2× CSS 像素内部渲染、
+128 HDR cube、2048 阴影和 4× MSAA，高端手机不再因触屏判断被强制降级。模型、风格、
+layout 和目录的 project/revision/version 不一致会明确失败；单个真实模型加载失败时使用
+目录声明的程序化回退并显示统计，layout fallback 则保留建筑预览并提示缺失房间语义或尺寸。
+
+生产构建可以由 `tools/delivery/package_showroom.py` 转换成 bundle 模式。打包后的 Viewer 从
+`./showroom-data` 读取固定 artifact、目录、三套 style/layout 和全部引用资源，不依赖开发
+API；`presentation` 模式默认进入暖木客厅近景、收起工程卡片，并在切换风格后保持同一镜头。
+完整操作见 [客户样板间交付说明](../../docs/delivery/customer-showroom.md)。
 
 Viewer 与场景/风格契约统一使用米制、右手坐标、Y-up、XZ 地面。Babylon Scene 显式启用
 右手坐标，避免 glTF Loader 在左手模式下增加根节点翻转后造成结构与布局家具错位。多个语义

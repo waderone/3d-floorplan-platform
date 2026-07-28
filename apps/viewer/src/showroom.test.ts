@@ -115,10 +115,10 @@ test('builds an eye-level living-room camera from the sofa and focal wall axis',
     { itemId: 'living-sideboard', position: [4.8, 0.34, 4.96] },
   ])
   assert.ok(preset)
-  assert.deepEqual(preset.target, [4.8, 1.05, 5.16])
-  assert.ok(Math.abs(preset.radius - Math.hypot(3.3, 0.5)) < 1e-12)
-  assert.ok(preset.alpha > 0 && preset.alpha < Math.PI / 2)
-  assert.equal(preset.beta, Math.PI * 0.47)
+  assert.deepEqual(preset.target, [4.8525, 0.82, 6.9175])
+  assert.ok(Math.abs(preset.radius - Math.hypot(0.9, 2.8)) < 1e-12)
+  assert.ok(preset.alpha < -Math.PI / 2 && preset.alpha > -Math.PI)
+  assert.equal(preset.beta, Math.PI * 0.42)
   assert.equal(livingCloseupCameraPreset([]), null)
 })
 

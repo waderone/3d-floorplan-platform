@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-项目处于技术验证阶段。编辑器底座、“底图导入→标定→墙体→保存/重载”、
+项目已经形成可交付的商业演示版/MVP。编辑器底座、“底图导入→标定→墙体→保存/重载”、
 “浏览器 GLB 导出→优化→Babylon.js 多端浏览”、“装修风格→Web 实时预览→Blender
 异步效果图”、“房间多边形→规则布局→三套风格同源渲染”、“可审计真实家具→
 客餐卧整屋布置→多端同源加载”、“EEVEE 预览→Cycles/Metal 1080p
@@ -12,7 +12,9 @@
 接受/拒绝→确定性 Wall/Zone 写入→revision 保存”、“可审计样本→墙/房间/门窗指标→
 人工修正中位时间”，以及“工作包/原图校验→墙房门窗真值编辑→第二人复核→评测样本晋级”
 技术闸门，以及“多来源 CC0 资产→实时 PBR 纹理保留换装→权威门窗净空避让→多端/Blender
-同源加载”的首个精细资产切片均已跑通。下一批工作是：
+同源加载”的首个精细资产切片均已跑通。受控真实样板现可打包为脱离开发 API 的确定性客户
+预览 ZIP，在桌面、平板和高端手机上以高画质切换三套风格。生产 SaaS 的规模化数据与基础设施
+仍属于下一阶段。
 
 首个双人复核真实户型现已进一步形成暖木极简精装标杆：三间卧室增加独立床头柜与暖光台灯，
 厨房补齐烤箱、烟机、水槽、灶具和台面陈设，卫生间补齐浴室柜、镜灯、马桶、淋浴和毛巾细节；
@@ -85,6 +87,22 @@
 - [卧室、厨房与卫生间真实感对齐](docs/adr/0026-private-room-realism-parity.md)
 - [商业级实时卧室质量标杆](docs/adr/0027-commercial-bedroom-benchmark.md)
 - [高端移动端暖木客厅材质标杆](docs/adr/0028-high-end-living-materials.md)
+- [客户 3D 样板间离线交付](docs/adr/0029-customer-showroom-delivery.md)
+- [客户样板间操作与交付说明](docs/delivery/customer-showroom.md)
+
+## 客户预览包
+
+构建 Viewer 后，可以把已 ready 的项目打成确定性离线预览 ZIP：
+
+```bash
+work/api-venv/bin/python tools/delivery/package_showroom.py \
+  --project-id refined-commons-190205778 \
+  --output dist/delivery/refined-commons-190205778-showroom.zip
+```
+
+ZIP 包含结构、三套风格、确定性布局、实际引用模型、HDR/PBR 资源、许可证、跨平台启动器和逐
+文件 SHA-256 manifest。具体启动、局域网手机访问和边界说明见
+[客户样板间操作与交付说明](docs/delivery/customer-showroom.md)。
 
 ## 仓库结构
 
