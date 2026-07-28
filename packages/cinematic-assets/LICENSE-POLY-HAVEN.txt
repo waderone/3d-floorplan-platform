@@ -1,0 +1,7 @@
+Poly Haven assets are released under CC0 1.0.
+
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Poly Haven license: https://polyhaven.com/license
+
+The project does not claim authorship of these assets. Individual asset authors
+and source pages are recorded in catalog.json.

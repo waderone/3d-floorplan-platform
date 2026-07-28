@@ -1,0 +1,494 @@
+{
+  "schemaVersion": "1.0",
+  "id": "warm-minimal-cinematic-assets",
+  "version": 1,
+  "scope": "audited-candidate-pool",
+  "license": {
+    "spdx": "CC0-1.0",
+    "url": "https://polyhaven.com/license",
+    "localNotice": "LICENSE-POLY-HAVEN.txt"
+  },
+  "resources": [
+    {
+      "id": "studio-small-09-4k-hdr",
+      "kind": "environment",
+      "assetId": "studio_small_09",
+      "author": "Sergej Majboroda",
+      "sourcePageUrl": "https://polyhaven.com/a/studio_small_09",
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/studio_small_09_4k.hdr",
+      "delivery": {
+        "path": "environment/studio_small_09_4k.hdr",
+        "bytes": 24670900,
+        "md5": "fa4b6cd37878ff887d1bdad57bbeca92"
+      }
+    },
+    {
+      "id": "wood-floor-diffuse-4k",
+      "kind": "color",
+      "assetId": "wood_floor",
+      "author": "Dimitrios Savva",
+      "sourcePageUrl": "https://polyhaven.com/a/wood_floor",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/wood_floor/wood_floor_diff_4k.jpg",
+      "delivery": {
+        "path": "materials/wood-floor/wood_floor_diff_4k.jpg",
+        "bytes": 10771881,
+        "md5": "0ec20da4eb478c72f34b73e6421d6a9a"
+      }
+    },
+    {
+      "id": "wood-floor-normal-4k",
+      "kind": "normal",
+      "assetId": "wood_floor",
+      "author": "Dimitrios Savva",
+      "sourcePageUrl": "https://polyhaven.com/a/wood_floor",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/wood_floor/wood_floor_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "materials/wood-floor/wood_floor_nor_gl_4k.jpg",
+        "bytes": 6964039,
+        "md5": "c6d7fd4f38f1583e205e852811b33b42"
+      }
+    },
+    {
+      "id": "wood-floor-roughness-4k",
+      "kind": "roughness",
+      "assetId": "wood_floor",
+      "author": "Dimitrios Savva",
+      "sourcePageUrl": "https://polyhaven.com/a/wood_floor",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/wood_floor/wood_floor_rough_4k.jpg",
+      "delivery": {
+        "path": "materials/wood-floor/wood_floor_rough_4k.jpg",
+        "bytes": 8369568,
+        "md5": "2667e84c12fe5bf05312d224175a64e0"
+      }
+    },
+    {
+      "id": "painted-plaster-diffuse-4k",
+      "kind": "color",
+      "assetId": "painted_plaster_wall",
+      "author": "Amal Kumar",
+      "sourcePageUrl": "https://polyhaven.com/a/painted_plaster_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/painted_plaster_wall/painted_plaster_wall_diff_4k.jpg",
+      "delivery": {
+        "path": "materials/painted-plaster/painted_plaster_wall_diff_4k.jpg",
+        "bytes": 12556766,
+        "md5": "7db04e0e455152cf79e112f5852c973d"
+      }
+    },
+    {
+      "id": "painted-plaster-normal-4k",
+      "kind": "normal",
+      "assetId": "painted_plaster_wall",
+      "author": "Amal Kumar",
+      "sourcePageUrl": "https://polyhaven.com/a/painted_plaster_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/painted_plaster_wall/painted_plaster_wall_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "materials/painted-plaster/painted_plaster_wall_nor_gl_4k.jpg",
+        "bytes": 16230301,
+        "md5": "efc61a0064fcb8b674ca817acd2e0555"
+      }
+    },
+    {
+      "id": "painted-plaster-roughness-4k",
+      "kind": "roughness",
+      "assetId": "painted_plaster_wall",
+      "author": "Amal Kumar",
+      "sourcePageUrl": "https://polyhaven.com/a/painted_plaster_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/painted_plaster_wall/painted_plaster_wall_rough_4k.jpg",
+      "delivery": {
+        "path": "materials/painted-plaster/painted_plaster_wall_rough_4k.jpg",
+        "bytes": 6052444,
+        "md5": "a72a54cfc30558de814c0e4b1ad27916"
+      }
+    },
+    {
+      "id": "cotton-jersey-diffuse-4k",
+      "kind": "color",
+      "assetId": "cotton_jersey",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/cotton_jersey",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/cotton_jersey/cotton_jersey_diff_4k.jpg",
+      "delivery": {
+        "path": "materials/cotton-jersey/cotton_jersey_diff_4k.jpg",
+        "bytes": 12298853,
+        "md5": "f30c46b17465b9f0456cf646645ad736"
+      }
+    },
+    {
+      "id": "cotton-jersey-normal-4k",
+      "kind": "normal",
+      "assetId": "cotton_jersey",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/cotton_jersey",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/cotton_jersey/cotton_jersey_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "materials/cotton-jersey/cotton_jersey_nor_gl_4k.jpg",
+        "bytes": 12746403,
+        "md5": "10065e7f87dc6e2af177dbe985cff1b6"
+      }
+    },
+    {
+      "id": "cotton-jersey-roughness-4k",
+      "kind": "roughness",
+      "assetId": "cotton_jersey",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/cotton_jersey",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/cotton_jersey/cotton_jersey_rough_4k.jpg",
+      "delivery": {
+        "path": "materials/cotton-jersey/cotton_jersey_rough_4k.jpg",
+        "bytes": 16331798,
+        "md5": "0c6797470a57831b2c3fb3794d3adf9f"
+      }
+    },
+    {
+      "id": "natural-rug-diffuse-4k",
+      "kind": "color",
+      "assetId": "curly_teddy_natural",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/curly_teddy_natural/curly_teddy_natural_diff_4k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_diff_4k.jpg",
+        "bytes": 8674732,
+        "md5": "f4b1c26353193eaa9e7f715ab4a3186d"
+      }
+    },
+    {
+      "id": "natural-rug-normal-4k",
+      "kind": "normal",
+      "assetId": "curly_teddy_natural",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/curly_teddy_natural/curly_teddy_natural_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_nor_gl_4k.jpg",
+        "bytes": 7059603,
+        "md5": "11d1fc73ec056e1cdd7ee29f7eee72ba"
+      }
+    },
+    {
+      "id": "natural-rug-roughness-4k",
+      "kind": "roughness",
+      "assetId": "curly_teddy_natural",
+      "author": "Rico Cilliers / colormass",
+      "sourcePageUrl": "https://polyhaven.com/a/curly_teddy_natural",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/curly_teddy_natural/curly_teddy_natural_rough_4k.jpg",
+      "delivery": {
+        "path": "materials/natural-rug/curly_teddy_natural_rough_4k.jpg",
+        "bytes": 10777317,
+        "md5": "3f6d9a3173a649081bbd6b1c4677ec55"
+      }
+    },
+    {
+      "id": "oak-veneer-diffuse-4k",
+      "kind": "color",
+      "assetId": "oak_veneer_01",
+      "author": "Jenelle van Heerden",
+      "sourcePageUrl": "https://polyhaven.com/a/oak_veneer_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/oak_veneer_01/oak_veneer_01_diff_4k.jpg",
+      "delivery": {
+        "path": "materials/oak-veneer/oak_veneer_01_diff_4k.jpg",
+        "bytes": 12587069,
+        "md5": "d4c13847045d1a10475a23b0787bf384"
+      }
+    },
+    {
+      "id": "oak-veneer-normal-4k",
+      "kind": "normal",
+      "assetId": "oak_veneer_01",
+      "author": "Jenelle van Heerden",
+      "sourcePageUrl": "https://polyhaven.com/a/oak_veneer_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/oak_veneer_01/oak_veneer_01_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "materials/oak-veneer/oak_veneer_01_nor_gl_4k.jpg",
+        "bytes": 11584844,
+        "md5": "03b22c26ed6dc71c46ba5f7a19ccc80a"
+      }
+    },
+    {
+      "id": "oak-veneer-roughness-4k",
+      "kind": "roughness",
+      "assetId": "oak_veneer_01",
+      "author": "Jenelle van Heerden",
+      "sourcePageUrl": "https://polyhaven.com/a/oak_veneer_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/oak_veneer_01/oak_veneer_01_rough_4k.jpg",
+      "delivery": {
+        "path": "materials/oak-veneer/oak_veneer_01_rough_4k.jpg",
+        "bytes": 18638525,
+        "md5": "b63d5e096d3f8a18b2725659be233121"
+      }
+    },
+    {
+      "id": "modern-arm-chair-gltf-4k",
+      "kind": "model",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/modern_arm_chair_01/modern_arm_chair_01_4k.gltf",
+      "delivery": {
+        "path": "models/modern-arm-chair/modern_arm_chair_01_4k.gltf",
+        "bytes": 5121,
+        "md5": "d48eaefb8944daf5d90022188baf51a3"
+      }
+    },
+    {
+      "id": "modern-arm-chair-bin",
+      "kind": "model-data",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_arm_chair_01/modern_arm_chair_01.bin",
+      "delivery": {
+        "path": "models/modern-arm-chair/modern_arm_chair_01.bin",
+        "bytes": 240728,
+        "md5": "5a8f2ea1c79ea484140e484b2a621670"
+      }
+    },
+    {
+      "id": "modern-arm-chair-legs-diffuse-4k",
+      "kind": "color",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_legs_diff_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_legs_diff_4k.jpg",
+        "bytes": 6243534,
+        "md5": "7089ca5fdac380667f68eaf55c92fd55"
+      }
+    },
+    {
+      "id": "modern-arm-chair-legs-normal-4k",
+      "kind": "normal",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_legs_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_legs_nor_gl_4k.jpg",
+        "bytes": 7563102,
+        "md5": "f03de59cc6543914ad5ef72da095d720"
+      }
+    },
+    {
+      "id": "modern-arm-chair-legs-arm-4k",
+      "kind": "arm",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_legs_arm_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_legs_arm_4k.jpg",
+        "bytes": 7577101,
+        "md5": "d1bb5ef83e824173117c93dac5c3b7cb"
+      }
+    },
+    {
+      "id": "modern-arm-chair-pillow-diffuse-4k",
+      "kind": "color",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_pillow_diff_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_pillow_diff_4k.jpg",
+        "bytes": 2891837,
+        "md5": "9f9ca9b089cbc306c7d3c080e2b26e45"
+      }
+    },
+    {
+      "id": "modern-arm-chair-pillow-normal-4k",
+      "kind": "normal",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_pillow_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_pillow_nor_gl_4k.jpg",
+        "bytes": 3975872,
+        "md5": "d673a6d4c8a0558a18dddd693d902430"
+      }
+    },
+    {
+      "id": "modern-arm-chair-pillow-arm-4k",
+      "kind": "arm",
+      "assetId": "modern_arm_chair_01",
+      "author": "Vibrant Nordic",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_arm_chair_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_arm_chair_01/modern_arm_chair_01_pillow_arm_4k.jpg",
+      "delivery": {
+        "path": "models/modern-arm-chair/textures/modern_arm_chair_01_pillow_arm_4k.jpg",
+        "bytes": 4372384,
+        "md5": "22845f373c26066e8585b5865c15aa42"
+      }
+    },
+    {
+      "id": "potted-plant-02-gltf-2k",
+      "kind": "model",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/potted_plant_02/potted_plant_02_2k.gltf",
+      "delivery": {
+        "path": "models/potted-plant-02/potted_plant_02_2k.gltf",
+        "bytes": 6653,
+        "md5": "9161f84da94065f5b3888347c0f275ce"
+      }
+    },
+    {
+      "id": "potted-plant-02-bin",
+      "kind": "model-data",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/potted_plant_02/potted_plant_02.bin",
+      "delivery": {
+        "path": "models/potted-plant-02/potted_plant_02.bin",
+        "bytes": 1852244,
+        "md5": "cdbd4619b2596c9c469ad34676085fa8"
+      }
+    },
+    {
+      "id": "potted-plant-02-leaves-diffuse-2k",
+      "kind": "color",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_leaves_diff_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_leaves_diff_2k.jpg",
+        "bytes": 584084,
+        "md5": "96aa3bba976e762eedced66d9832c2a5"
+      }
+    },
+    {
+      "id": "potted-plant-02-leaves-normal-2k",
+      "kind": "normal",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_leaves_nor_gl_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_leaves_nor_gl_2k.jpg",
+        "bytes": 481780,
+        "md5": "c187345d2875a28be93e61db4dd61558"
+      }
+    },
+    {
+      "id": "potted-plant-02-leaves-roughness-2k",
+      "kind": "roughness",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_leaves_rough_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_leaves_rough_2k.jpg",
+        "bytes": 435284,
+        "md5": "0b1e1d0c38da3a5d73dc1274fc739fa0"
+      }
+    },
+    {
+      "id": "potted-plant-02-pot-diffuse-2k",
+      "kind": "color",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_pot_diff_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_pot_diff_2k.jpg",
+        "bytes": 596006,
+        "md5": "d7c6055680866af21f73e14a57bbd7d3"
+      }
+    },
+    {
+      "id": "potted-plant-02-pot-normal-2k",
+      "kind": "normal",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_pot_nor_gl_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_pot_nor_gl_2k.jpg",
+        "bytes": 494387,
+        "md5": "0b333cfc921defac311dc9232f2f01b9"
+      }
+    },
+    {
+      "id": "potted-plant-02-pot-roughness-2k",
+      "kind": "roughness",
+      "assetId": "potted_plant_02",
+      "author": "Rico Cilliers",
+      "sourcePageUrl": "https://polyhaven.com/a/potted_plant_02",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/potted_plant_02/potted_plant_02_pot_rough_2k.jpg",
+      "delivery": {
+        "path": "models/potted-plant-02/textures/potted_plant_02_pot_rough_2k.jpg",
+        "bytes": 426559,
+        "md5": "08a89ef59d4fd0b19a925cc4d2c512af"
+      }
+    },
+    {
+      "id": "modern-coffee-table-01-gltf-4k",
+      "kind": "model",
+      "assetId": "modern_coffee_table_01",
+      "author": "Amin",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/modern_coffee_table_01/modern_coffee_table_01_4k.gltf",
+      "delivery": {
+        "path": "models/modern-coffee-table-01/modern_coffee_table_01_4k.gltf",
+        "bytes": 2771,
+        "md5": "7522b6cfef0e46be56ec9557c116770b"
+      }
+    },
+    {
+      "id": "modern-coffee-table-01-bin",
+      "kind": "model-data",
+      "assetId": "modern_coffee_table_01",
+      "author": "Amin",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/modern_coffee_table_01/modern_coffee_table_01.bin",
+      "delivery": {
+        "path": "models/modern-coffee-table-01/modern_coffee_table_01.bin",
+        "bytes": 154864,
+        "md5": "6e8f65bff935af308eab9eff062f6daa"
+      }
+    },
+    {
+      "id": "modern-coffee-table-01-diffuse-4k",
+      "kind": "color",
+      "assetId": "modern_coffee_table_01",
+      "author": "Amin",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_coffee_table_01/modern_coffee_table_01_diff_4k.jpg",
+      "delivery": {
+        "path": "models/modern-coffee-table-01/textures/modern_coffee_table_01_diff_4k.jpg",
+        "bytes": 6200991,
+        "md5": "edeb0d400eee69aebab85c5e7c8e6691"
+      }
+    },
+    {
+      "id": "modern-coffee-table-01-normal-4k",
+      "kind": "normal",
+      "assetId": "modern_coffee_table_01",
+      "author": "Amin",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_coffee_table_01/modern_coffee_table_01_nor_gl_4k.jpg",
+      "delivery": {
+        "path": "models/modern-coffee-table-01/textures/modern_coffee_table_01_nor_gl_4k.jpg",
+        "bytes": 6337924,
+        "md5": "db6673edebab31a39b9fbf58fe7681d8"
+      }
+    },
+    {
+      "id": "modern-coffee-table-01-roughness-4k",
+      "kind": "roughness",
+      "assetId": "modern_coffee_table_01",
+      "author": "Amin",
+      "sourcePageUrl": "https://polyhaven.com/a/modern_coffee_table_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/4k/modern_coffee_table_01/modern_coffee_table_01_rough_4k.jpg",
+      "delivery": {
+        "path": "models/modern-coffee-table-01/textures/modern_coffee_table_01_rough_4k.jpg",
+        "bytes": 5746444,
+        "md5": "63302c7c7af1371515079d4d3b6a2e17"
+      }
+    }
+  ]
+}

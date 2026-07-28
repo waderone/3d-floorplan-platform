@@ -16,6 +16,11 @@
 预览 ZIP，在桌面、平板和高端手机上以高画质切换三套风格。生产 SaaS 的规模化数据与基础设施
 仍属于下一阶段。
 
+在实时技术样板之外，项目现已新增独立的离线商业效果链路：以已复核真实户型的暖木极简客厅
+为首件基准，使用 Blender Cycles/Metal、4K PBR 和可审计 CC0 家具生成 4K 主效果图与 8K
+交互全景。中文离线展厅不依赖 CDN 或在线 API，可在 macOS 一键启动，并通过同一 Wi-Fi 向
+高端手机和平板提供浏览。该链路优先保证最终交付画质和稳定性，不受实时网格预算约束。
+
 首个双人复核真实户型现已进一步形成暖木极简精装标杆：三间卧室增加独立床头柜与暖光台灯，
 厨房补齐烤箱、烟机、水槽、灶具和台面陈设，卫生间补齐浴室柜、镜灯、马桶、淋浴和毛巾细节；
 湿区地面、分区灯光、房间隔离近景以及手机竖屏自适应镜头均已进入实时 Viewer。该样板达到
@@ -89,6 +94,7 @@
 - [高端移动端暖木客厅材质标杆](docs/adr/0028-high-end-living-materials.md)
 - [客户 3D 样板间离线交付](docs/adr/0029-customer-showroom-delivery.md)
 - [客户样板间操作与交付说明](docs/delivery/customer-showroom.md)
+- [暖木极简客厅离线商业效果展厅](docs/delivery/cinematic-showroom.md)
 
 ## 客户预览包
 
@@ -103,6 +109,16 @@ work/api-venv/bin/python tools/delivery/package_showroom.py \
 ZIP 包含结构、三套风格、确定性布局、实际引用模型、HDR/PBR 资源、许可证、跨平台启动器和逐
 文件 SHA-256 manifest。具体启动、局域网手机访问和边界说明见
 [客户样板间操作与交付说明](docs/delivery/customer-showroom.md)。
+
+照片级离线效果展厅使用独立打包命令：
+
+```bash
+python3 tools/cinematic/package_showroom.py
+```
+
+它输出包含 4K/8K 母版、中文交互展厅、macOS 原生启动器和完整审计材料的
+`work/deliveries/warm-minimal-living.zip`，具体说明见
+[暖木极简客厅离线商业效果展厅](docs/delivery/cinematic-showroom.md)。
 
 ## 仓库结构
 

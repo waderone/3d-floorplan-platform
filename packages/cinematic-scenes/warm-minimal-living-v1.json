@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "1.0",
+  "id": "warm-minimal-living",
+  "version": 1,
+  "projectId": "refined-commons-190205778",
+  "styleId": "warm-minimal",
+  "source": {
+    "scenePath": "services/api/data/scenes/refined-commons-190205778.json",
+    "sceneSha256": "915b0ba1e7698383202099b8213644bd8b612204c2da5615b7ec1f22f39fff77",
+    "imagePath": "datasets/recognition/private/commons-190205778.jpg",
+    "imageSha256": "a71adddbe82e90a30590ef9731b59e220fd9c80df7fc0b2c26ff31cf89007f3f",
+    "roomId": "zone_truth_366965e3b2c3_room_7"
+  },
+  "envelope": {
+    "worldBounds": {
+      "minimum": [3.171, 4.993],
+      "maximum": [7.196, 8.909]
+    },
+    "localSize": [4.025, 3.916, 2.8],
+    "wallThickness": 0.2,
+    "openSide": "south"
+  },
+  "authoritativeOpenings": [
+    {
+      "id": "opening_truth_366965e3b2c3_door_6",
+      "side": "west",
+      "width": 0.9,
+      "height": 2.1,
+      "connectsTo": "parking"
+    },
+    {
+      "id": "opening_truth_366965e3b2c3_door_1",
+      "side": "east",
+      "width": 0.9,
+      "height": 2.1,
+      "connectsTo": "bedroom"
+    }
+  ],
+  "derivedFeatures": [
+    {
+      "id": "north-wall-stair",
+      "kind": "straight-stair",
+      "source": "source-plan-visual",
+      "confidence": "reviewed-inferred",
+      "localBounds": {
+        "minimum": [-1.45, 0.96, 0.0],
+        "maximum": [1.45, 1.78, 2.6]
+      },
+      "steps": 13,
+      "rise": 0.2,
+      "direction": "west-to-east"
+    },
+    {
+      "id": "upper-stair-landing",
+      "kind": "upper-landing-environment",
+      "source": "stair-connectivity",
+      "confidence": "reviewed-inferred",
+      "localBounds": {
+        "minimum": [-2.17, 0.33, 2.65],
+        "maximum": [2.17, 2.14, 4.52]
+      },
+      "notes": "楼梯必需的二层落地环境；用于避免全景把未建模空间显示为空世界背景，不改变首层权威墙体。"
+    }
+  ],
+  "designIntent": {
+    "focalPoint": "stair-and-media-wall",
+    "seatingDirection": "north",
+    "cameraEntry": "south-corridor",
+    "inventWindows": false,
+    "notes": "楼梯下整合电视与收纳；南侧开放走廊作为摄影入口。"
+  },
+  "layoutAudit": {
+    "crossPassage": {
+      "axis": "x",
+      "centerY": 0.55,
+      "clearDepth": 0.9,
+      "connects": ["west-door", "east-door"]
+    },
+    "seatingZone": {
+      "side": "south",
+      "maximumY": 0.1
+    },
+    "excludedCandidateAssetIds": [
+      "modern_arm_chair_01",
+      "potted_plant_02"
+    ],
+    "notes": "两侧门洞之间保持连续通行；单椅和大盆栽因侵占主通道从最终方案排除。"
+  },
+  "outputs": {
+    "draft": {"width": 1280, "height": 720, "samples": 32},
+    "preview": {"width": 1600, "height": 900, "samples": 128},
+    "panorama-preview": {"width": 2048, "height": 1024, "samples": 64},
+    "hero": {"width": 3840, "height": 2160, "samples": 384},
+    "panorama": {"width": 8192, "height": 4096, "samples": 256}
+  }
+}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#171511" />
+    <title>暖木极简客厅 · 离线效果展厅</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="showroom">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">真实户型 · 暖木极简</p>
+          <h1>客厅方案</h1>
+        </div>
+        <nav class="mode-switch" aria-label="查看方式">
+          <button class="mode-button is-active" type="button" data-mode="hero" aria-pressed="true">
+            4K 主图
+          </button>
+          <button class="mode-button" type="button" data-mode="panorama" aria-pressed="false">
+            8K 全景
+          </button>
+        </nav>
+      </header>
+
+      <section class="stage" aria-label="客厅效果展示">
+        <figure class="hero-view is-visible" data-view="hero">
+          <img src="./media/hero-4k.jpg" alt="暖木极简客厅 4K 主效果图" />
+        </figure>
+        <div class="panorama-view" data-view="panorama" aria-hidden="true">
+          <canvas
+            id="panorama-canvas"
+            tabindex="0"
+            aria-label="可拖动浏览的客厅 8K 全景"
+          ></canvas>
+          <img
+            class="panorama-fallback"
+            src="./media/panorama-8k.jpg"
+            alt="暖木极简客厅 8K 全景图"
+          />
+          <div class="panorama-hint">拖动查看空间 · 双指或滚轮缩放</div>
+        </div>
+        <div class="loading" role="status">正在载入高分辨率画面…</div>
+      </section>
+
+      <footer class="footer">
+        <div class="facts" aria-label="方案信息">
+          <span>真实户型</span>
+          <span>无虚构窗户</span>
+          <span>离线稳定运行</span>
+        </div>
+        <div class="share">
+          <span>同一 Wi‑Fi 下，手机或平板访问：</span>
+          <button id="copy-address" type="button">复制当前地址</button>
+        </div>
+      </footer>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
