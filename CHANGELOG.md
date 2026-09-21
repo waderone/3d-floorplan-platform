@@ -6,6 +6,8 @@ the project intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-21
+
 ### Fixed
 
 - Reject path traversal at the artifact-store boundary and rasterize uploaded
@@ -29,5 +31,6 @@ the project intends to use [Semantic Versioning](https://semver.org/).
 - Upgraded glTF-Transform to 4.5.0 and Starlette to the patched 1.x line;
   JavaScript and Python dependency audits now run in CI.
 
-[Unreleased]: https://github.com/waderone/3d-floorplan-platform/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/waderone/3d-floorplan-platform/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/waderone/3d-floorplan-platform/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/waderone/3d-floorplan-platform/releases/tag/v0.1.0
