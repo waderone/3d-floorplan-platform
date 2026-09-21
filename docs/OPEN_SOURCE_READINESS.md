@@ -23,8 +23,7 @@ from external actions that require a maintainer decision.
 - [x] Obtain maintainer approval to rewrite Git history so author metadata uses
       the GitHub noreply address and the former private editor mirror URL is
       removed from historical repository content.
-- [ ] Review every historical commit for confidential material with a
-      dedicated secret scanner such as Gitleaks before changing visibility.
+- [x] Scan all 36 rewritten commits with Gitleaks 8.30.1; no leaks were found.
 - [ ] Confirm that the CC0 source and integrity records in all three asset
       catalogs remain accurate at the publication date.
 - [ ] Push the prepared `main` branch and confirm all CI and CodeQL checks pass.
