@@ -10,7 +10,7 @@
     "@gltf-transform/cli": "4.5.0",
     "@gltf-transform/core": "4.5.0",
     "@gltf-transform/extensions": "4.5.0",
-    "meshoptimizer": "1.0.1"
+    "meshoptimizer": "1.2.0"
   },
   "engines": {
     "node": ">=22.12"
