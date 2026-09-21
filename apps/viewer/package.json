@@ -11,7 +11,7 @@
   "dependencies": {
     "@babylonjs/core": "9.16.2",
     "@babylonjs/loaders": "9.16.2",
-    "meshoptimizer": "1.0.1"
+    "meshoptimizer": "1.2.0"
   },
   "devDependencies": {
     "typescript": "7.0.2",
