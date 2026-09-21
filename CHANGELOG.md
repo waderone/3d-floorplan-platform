@@ -6,6 +6,11 @@ the project intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject path traversal at the artifact-store boundary and rasterize uploaded
+  annotation images before inserting them into the SVG workspace.
+
 ## [0.1.0] - 2026-09-21
 
 ### Added

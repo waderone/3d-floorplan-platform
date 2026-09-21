@@ -17,6 +17,7 @@ MAX_GLB_UPLOAD_BYTES = 80 * 1024 * 1024
 MOBILE_GLB_BUDGET_BYTES = 15 * 1024 * 1024
 PIPELINE_VERSION = "gltf-transform-4.5.0-pascal-v4"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 class GlbStatistics(BaseModel):
@@ -130,6 +131,8 @@ class ArtifactStore:
         return self._artifact_directory(artifact_id) / "manifest.json"
 
     def _latest_path(self, project_id: str) -> Path:
+        if not PROJECT_ID_RE.fullmatch(project_id):
+            raise ValueError("invalid project id")
         return self.index_directory / f"{project_id}.json"
 
     def _write_json(self, path: Path, value: dict[str, Any]) -> None:

@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from app.artifacts import ArtifactStore
 from app.main import MAX_UPLOAD_BYTES, create_app
 
 
@@ -46,6 +47,13 @@ class CopyOptimizer:
 class FailingOptimizer:
     def optimize(self, source: Path, output: Path) -> dict[str, Any]:
         raise RuntimeError("synthetic optimizer failure")
+
+
+def test_artifact_store_rejects_project_id_path_traversal(tmp_path: Path) -> None:
+    store = ArtifactStore(tmp_path / "artifacts")
+
+    with pytest.raises(ValueError, match="invalid project id"):
+        store.load_latest("../outside")
 
 
 class CopyRenderer:

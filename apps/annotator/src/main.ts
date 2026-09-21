@@ -54,7 +54,7 @@ root.innerHTML = `
       <div class="file-actions">
         <button id="demo-button" class="ghost-button" type="button">载入演示</button>
         <label class="file-button">工作包<input id="workpack-file" type="file" accept="application/json,.json" /></label>
-        <label class="file-button">原图<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /></label>
+        <label class="file-button">原图<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" /></label>
         <label class="file-button secondary">载入标注<input id="draft-file" type="file" accept="application/json,.json" /></label>
       </div>
     </header>
@@ -727,21 +727,39 @@ async function verifyAndLoadImage(blob: Blob, filename: string): Promise<void> {
   const content = await blob.arrayBuffer()
   const digest = await sha256Hex(content)
   if (digest !== workpack.image.sha256) throw new Error('原图文件摘要与工作包不一致')
-  const nextUrl = URL.createObjectURL(blob)
-  const probe = new Image()
-  probe.src = nextUrl
-  await probe.decode()
-  if (probe.naturalWidth !== workpack.image.widthPixels || probe.naturalHeight !== workpack.image.heightPixels) {
-    URL.revokeObjectURL(nextUrl)
+  const bytes = new Uint8Array(content)
+  const isPng = bytes.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value)
+  const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+  const isWebp = bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP'
+  const contentType = isPng ? 'image/png' : isJpeg ? 'image/jpeg' : isWebp ? 'image/webp' : null
+  if (!contentType) throw new Error('原图必须是 PNG、JPEG 或 WebP 位图')
+
+  const bitmap = await createImageBitmap(new Blob([content], { type: contentType }))
+  if (bitmap.width !== workpack.image.widthPixels || bitmap.height !== workpack.image.heightPixels) {
+    bitmap.close()
     throw new Error('原图像素尺寸与工作包不一致')
   }
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const context = canvas.getContext('2d')
+  if (!context) {
+    bitmap.close()
+    throw new Error('浏览器无法创建安全的位图画布')
+  }
+  context.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  const safeBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error('原图位图转换失败')), 'image/png')
+  })
+  const nextUrl = URL.createObjectURL(safeBlob)
   if (imageUrl) URL.revokeObjectURL(imageUrl)
   imageUrl = nextUrl
   imageVerified = true
-  svg.setAttribute('viewBox', `0 0 ${probe.naturalWidth} ${probe.naturalHeight}`)
+  svg.setAttribute('viewBox', `0 0 ${canvas.width} ${canvas.height}`)
   planImage.setAttribute('href', nextUrl)
-  planImage.setAttribute('width', String(probe.naturalWidth))
-  planImage.setAttribute('height', String(probe.naturalHeight))
+  planImage.setAttribute('width', String(canvas.width))
+  planImage.setAttribute('height', String(canvas.height))
   setMessage(`${filename} 已通过文件摘要与像素尺寸校验`, 'success')
   render()
 }
