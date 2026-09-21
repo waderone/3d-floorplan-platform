@@ -192,7 +192,7 @@ def test_report_marks_three_style_result_publishable_and_deterministic(tmp_path:
     assert result["scene"]["zones"] == 2
     assert len(result["layouts"]) == 3
     assert all(layout["furnishedRoomCount"] == 2 for layout in result["layouts"])
-    assert result["artifact"]["pipelineVersion"] == "gltf-transform-4.4.1-pascal-v4"
+    assert result["artifact"]["pipelineVersion"] == "gltf-transform-4.5.0-pascal-v4"
 
 
 def test_report_keeps_pending_invalid_and_recognition_failure_explicit(tmp_path: Path) -> None:

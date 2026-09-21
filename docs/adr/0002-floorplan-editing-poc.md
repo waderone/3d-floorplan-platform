@@ -1,6 +1,6 @@
 # ADR-0002：户型编辑闭环 PoC
 
-- 状态：混合闭环验证通过；真实文件选择待人工复核
+- 状态：历史 PoC 验证通过；私有镜像方案已被公开上游基线取代
 - 日期：2026-07-15
 
 ## 目标
@@ -10,8 +10,8 @@
 
 ## 决定
 
-1. 使用私人仓库 `waderone/3d-floorplan-editor` 维护 Pascal 产品化镜像；主仓库
-   以 submodule 固定具体 commit，并保留原始 `pascalorg/editor` upstream。
+1. 本 ADR 最初使用私有产品化镜像完成闭环验证。开源发布后，主仓库只引用
+   `pascalorg/editor` 的公开固定 commit；下述镜像路由属于历史验证结果，尚未进入公开基线。
 2. 在镜像增加薄路由 `/poc/{projectId}`，只负责平台 API 适配，不改 Pascal Core
    场景模型、Guide 标定算法或墙体工具。
 3. FastAPI 使用外层场景 envelope：`schemaVersion`、`revision`、`units`、

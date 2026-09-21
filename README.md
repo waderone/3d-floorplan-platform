@@ -2,9 +2,62 @@
 
 一个将 2D 住宅户型图转换为可编辑、可风格化并可在手机、平板和电脑浏览的 3D 户型平台。
 
+[![CI](https://github.com/waderone/3d-floorplan-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/waderone/3d-floorplan-platform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+本仓库以 MIT 许可证开放项目自有代码和文档，目标是让户型场景 Schema、识别评测、人工标注、
+规则化布局、GLB 交付和多端浏览链路可以被公开复现、审查和扩展。第三方模型、贴图、数据样本和
+Git submodule 保留各自许可证，详见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+
+> 当前是 pre-1.0 技术预览，不是可直接部署的生产 SaaS。API 默认没有认证并允许开发环境 CORS；
+> 请勿直接暴露到公网或处理保密户型。生产安全边界见 [安全策略](SECURITY.md)。
+
+## 快速开始
+
+环境要求：Python 3.11+、Node.js 22.12+；编辑器上游验证另需 Bun，高清渲染另需 Blender。
+
+```bash
+git clone --recurse-submodules https://github.com/waderone/3d-floorplan-platform.git
+cd 3d-floorplan-platform
+
+# API
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r services/api/requirements-dev.txt
+uvicorn app.main:app --app-dir services/api --reload --port 8000
+```
+
+另开终端启动实时 Viewer：
+
+```bash
+cd apps/viewer
+npm ci
+npm run dev
+```
+
+运行完整的常规测试：
+
+```bash
+python -m pytest services/api/tests -q
+for package in apps/viewer apps/annotator workers/model; do
+  (cd "$package" && npm ci && npm test && npm run build --if-present)
+done
+```
+
+各模块的详细启动方式和已知限制见对应目录的 README。
+
+## 开源协作
+
+- 提交缺陷或功能建议前请阅读 [贡献指南](CONTRIBUTING.md)。
+- 安全问题请按 [安全策略](SECURITY.md) 私下报告，不要创建公开 Issue。
+- 参与项目即表示同意遵守 [行为准则](CODE_OF_CONDUCT.md)。
+- 版本变化记录在 [CHANGELOG](CHANGELOG.md)。
+- 新数据和资产必须提供来源、许可证、权利证据与完整性哈希；`local-only` 图像不得提交。
+- 首次公开发布前按 [开源发布检查清单](docs/OPEN_SOURCE_READINESS.md) 完成隐私与历史审计。
+
 ## 当前状态
 
-项目已经形成可交付的商业演示版/MVP。编辑器底座、“底图导入→标定→墙体→保存/重载”、
+项目已经形成可复现的技术演示版/MVP。编辑器底座、“底图导入→标定→墙体→保存/重载”、
 “浏览器 GLB 导出→优化→Babylon.js 多端浏览”、“装修风格→Web 实时预览→Blender
 异步效果图”、“房间多边形→规则布局→三套风格同源渲染”、“可审计真实家具→
 客餐卧整屋布置→多端同源加载”、“EEVEE 预览→Cycles/Metal 1080p
@@ -59,7 +112,8 @@
 - GLB、效果图和 Blender 文件都是派生结果。
 - 自动识别结果必须可以人工校正。
 - 实时 3D 和照片级效果图使用独立渲染链路。
-- 商业产品优先采用许可证清晰、允许商用的代码和资产。
+- 开源核心只接收许可证清晰、允许再分发的代码、数据和资产。
+- 商业部署能力可以在开源核心之上扩展，但不得削弱公开链路的可复现性。
 
 ## 项目文档
 

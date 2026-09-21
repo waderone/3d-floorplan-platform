@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/viewer
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/annotator
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /workers/model
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /services/api
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

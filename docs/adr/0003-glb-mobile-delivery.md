@@ -14,7 +14,7 @@
    GLB 结果回调；未提供回调时保留原文件下载行为，不修改 core 或 viewer 状态。
 2. FastAPI 接收源 GLB、保存处理状态和产物 manifest，但不在上传请求内同步执行
    优化。PoC 使用同进程后台任务调用独立 Node worker；该边界以后替换为任务队列。
-3. 模型 worker 固定 `@gltf-transform/cli@4.4.1`，输出优化 GLB，并记录优化前后
+3. 模型 worker 固定 `@gltf-transform/cli@4.5.0`，输出优化 GLB，并记录优化前后
    字节数、节点、网格和材质数量。源文件和优化文件都使用 SHA-256 标识；
    `pipelineVersion` 同时进入 artifact identity，算法升级不会复用旧产物。
 4. 公共 Viewer 使用 `@babylonjs/core@9.16.2`、`@babylonjs/loaders@9.16.2`、

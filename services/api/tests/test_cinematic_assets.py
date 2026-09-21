@@ -11,6 +11,7 @@ SCENE_SPEC_PATH = (
     REPOSITORY_ROOT / "packages" / "cinematic-scenes" / "warm-minimal-living-v1.json"
 )
 SCENE_BUILDER_PATH = REPOSITORY_ROOT / "tools" / "cinematic" / "build_warm_living.py"
+DATASET_MANIFEST_PATH = REPOSITORY_ROOT / "datasets" / "recognition" / "manifest.json"
 
 
 def test_cinematic_asset_catalog_is_frozen_and_unique() -> None:
@@ -92,6 +93,19 @@ def test_warm_minimal_living_scene_spec_references_frozen_sources() -> None:
         "samples": 256,
     }
     for key in ("scene", "image"):
-        path = REPOSITORY_ROOT / spec["source"][f"{key}Path"]
-        assert path.is_file()
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == spec["source"][f"{key}Sha256"]
+        relative_path = Path(spec["source"][f"{key}Path"])
+        digest = spec["source"][f"{key}Sha256"]
+        assert not relative_path.is_absolute()
+        assert len(digest) == 64
+        int(digest, 16)
+
+    dataset = json.loads(DATASET_MANIFEST_PATH.read_text(encoding="utf-8"))
+    sample = next(
+        value for value in dataset["samples"] if value["sampleId"] == "commons-190205778"
+    )
+    assert sample["imagePath"] == spec["source"]["imagePath"].removeprefix(
+        "datasets/recognition/"
+    )
+    assert sample["imageSha256"] == spec["source"]["imageSha256"]
+    assert sample["source"]["storageMode"] == "local-only"
+    assert sample["source"]["redistributionAllowed"] is True
