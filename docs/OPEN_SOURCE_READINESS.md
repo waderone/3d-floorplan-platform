@@ -32,7 +32,7 @@ from external actions that require a maintainer decision.
       updates, secret scanning with push protection, and branch protection.
 - [x] Test a clean public clone with `--recurse-submodules` and confirm the
       pinned Pascal Editor baseline is available without private access.
-- [ ] Publish `v0.1.0` with release notes only after testing a clean public
+- [x] Publish `v0.1.0` with release notes only after testing a clean public
       clone with `--recurse-submodules`.
 
 ## Community and adoption evidence
