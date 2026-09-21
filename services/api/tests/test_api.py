@@ -55,6 +55,9 @@ def test_artifact_store_rejects_project_id_path_traversal(tmp_path: Path) -> Non
     with pytest.raises(ValueError, match="invalid project id"):
         store.load_latest("../outside")
 
+    with pytest.raises(ValueError, match="invalid artifact id"):
+        store.load("../" + "a" * 64)
+
 
 class CopyRenderer:
     def render(

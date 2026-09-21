@@ -123,17 +123,19 @@ class ArtifactStore:
         self.lock = Lock()
 
     def _artifact_directory(self, artifact_id: str) -> Path:
-        if not SHA256_RE.fullmatch(artifact_id):
+        safe_id = os.path.basename(artifact_id)
+        if safe_id != artifact_id or not SHA256_RE.fullmatch(safe_id):
             raise ValueError("invalid artifact id")
-        return self.directory / artifact_id
+        return self.directory / safe_id
 
     def _manifest_path(self, artifact_id: str) -> Path:
         return self._artifact_directory(artifact_id) / "manifest.json"
 
     def _latest_path(self, project_id: str) -> Path:
-        if not PROJECT_ID_RE.fullmatch(project_id):
+        safe_id = os.path.basename(project_id)
+        if safe_id != project_id or not PROJECT_ID_RE.fullmatch(safe_id):
             raise ValueError("invalid project id")
-        return self.index_directory / f"{project_id}.json"
+        return self.index_directory / f"{safe_id}.json"
 
     def _write_json(self, path: Path, value: dict[str, Any]) -> None:
         temporary = path.with_suffix(f"{path.suffix}.tmp")
