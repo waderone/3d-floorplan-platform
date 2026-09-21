@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@babylonjs/core": "9.16.2",
-    "@babylonjs/loaders": "9.16.2",
+    "@babylonjs/loaders": "9.27.0",
     "meshoptimizer": "1.0.1"
   },
   "devDependencies": {
