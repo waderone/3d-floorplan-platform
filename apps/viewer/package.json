@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@babylonjs/core": "9.16.2",
+    "@babylonjs/core": "9.27.0",
     "@babylonjs/loaders": "9.16.2",
     "meshoptimizer": "1.0.1"
   },
