@@ -6,6 +6,8 @@ the project intends to use [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-21
+
 ### Added
 
 - Open-source license, contribution guide, security policy, code of conduct,
@@ -21,12 +23,6 @@ the project intends to use [Semantic Versioning](https://semver.org/).
   capabilities are not yet part of the public baseline.
 - Upgraded glTF-Transform to 4.5.0 and Starlette to the patched 1.x line;
   JavaScript and Python dependency audits now run in CI.
-
-## [0.1.0] - TBD
-
-The first public preview release will freeze the current schemas, publish
-reproducible setup instructions, and include release artifacts after the
-repository has passed the public-release checklist.
 
 [Unreleased]: https://github.com/waderone/3d-floorplan-platform/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/waderone/3d-floorplan-platform/releases/tag/v0.1.0

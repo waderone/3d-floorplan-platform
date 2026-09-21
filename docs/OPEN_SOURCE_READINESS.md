@@ -24,11 +24,14 @@ from external actions that require a maintainer decision.
       the GitHub noreply address and the former private editor mirror URL is
       removed from historical repository content.
 - [x] Scan all 36 rewritten commits with Gitleaks 8.30.1; no leaks were found.
-- [ ] Confirm that the CC0 source and integrity records in all three asset
+- [x] Confirm that the CC0 source and integrity records in all three asset
       catalogs remain accurate at the publication date.
-- [ ] Push the prepared `main` branch and confirm all CI and CodeQL checks pass.
-- [ ] Change repository visibility to public only after the preceding checks.
-- [ ] Enable GitHub private vulnerability reporting and branch protection.
+- [x] Push the prepared `main` branch and confirm all CI and CodeQL checks pass.
+- [x] Change repository visibility to public only after the preceding checks.
+- [x] Enable GitHub private vulnerability reporting, Dependabot security
+      updates, secret scanning with push protection, and branch protection.
+- [x] Test a clean public clone with `--recurse-submodules` and confirm the
+      pinned Pascal Editor baseline is available without private access.
 - [ ] Publish `v0.1.0` with release notes only after testing a clean public
       clone with `--recurse-submodules`.
 
