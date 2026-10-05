@@ -7,7 +7,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@gltf-transform/cli": "4.5.0",
+    "@gltf-transform/cli": "4.5.1",
     "@gltf-transform/core": "4.5.0",
     "@gltf-transform/extensions": "4.5.0",
     "meshoptimizer": "1.0.1"
